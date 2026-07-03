@@ -189,8 +189,11 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
     <p style="font-size:13px; margin-bottom:10px;">
       포도씨 한 줌으로 세계를 정복하라. 포도밭을 일구고, 양조하고, 교역하고,
       와인 지식 대결(WSET L1 → MW)로 지역을 복속시켜라.
-      지진과 전쟁, 떼먹히는 대금을 견디며 10개 지역을 모두 손에 넣으면 승리.
+      지진과 전쟁, 떼먹히는 대금을 견디며 15개 지역을 모두 손에 넣으면 승리.
     </p>
+    <div class="grouplabel">난이도</div>
+    <div id="diffrow" style="display:flex; gap:8px; margin-bottom:12px; flex-wrap:wrap;"></div>
+    <div class="grouplabel">진영</div>
     <div class="factioncard" onclick="pickFaction('georgia')">
       <h3>조지아 (콜키스)</h3>
       <ul>
@@ -239,6 +242,7 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
     <div id="qchoices"></div>
     <div id="qexp" class="exp hidden"></div>
     <div class="centerbtns">
+      <button id="fiftybtn" class="small"></button>
       <button id="revealbtn" class="wine"></button>
       <button id="qnextbtn" class="leaf hidden">다음 ▸</button>
     </div>
@@ -273,17 +277,32 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
 const REGIONS = [
   {id:'colchis',  name:'콜키스',            sub:'조지아 — 와인의 요람, 크베브리의 땅', tier:1, priceMod:1.0,  pos:{x:625,y:205}},
   {id:'hellas',   name:'헬라스',            sub:'그리스 — 심포지온과 암포라',          tier:1, priceMod:1.05, pos:{x:448,y:330}},
+  {id:'armenia',  name:'아르메니아',        sub:'아레니 동굴 — 세계 최고(最古) 와이너리 유적', tier:1, priceMod:1.05, pos:{x:692,y:236}},
   {id:'latium',   name:'라티움',            sub:'로마 — 제국의 심장',                  tier:2, priceMod:1.15, pos:{x:325,y:288}},
   {id:'campania', name:'캄파니아',          sub:'전설의 팔레르눔 와인',                tier:2, priceMod:1.2,  pos:{x:362,y:328}},
+  {id:'carthage', name:'카르타고',          sub:'마고의 농업서 — 지중해 무역 강국',    tier:2, priceMod:1.25, pos:{x:333,y:463}},
   {id:'gallia',   name:'갈리아 나르보넨시스', sub:'남프랑스 — 태양의 포도밭',          tier:3, priceMod:1.35, pos:{x:212,y:242}},
   {id:'burdigala',name:'부르디갈라',        sub:'보르도 — 강과 항구의 도시',           tier:3, priceMod:1.4,  pos:{x:143,y:198}},
+  {id:'thracia',  name:'트라키아',          sub:'디오니소스 숭배의 본향',              tier:3, priceMod:1.4,  pos:{x:428,y:224}},
   {id:'hispania', name:'히스파니아',        sub:'리오하 — 이베리아의 붉은 땅',         tier:4, priceMod:1.55, pos:{x:92,y:292}},
   {id:'germania', name:'게르마니아',        sub:'모젤 — 가파른 강변의 리슬링',         tier:4, priceMod:1.6,  pos:{x:258,y:130}},
+  {id:'pannonia', name:'판노니아',          sub:'도나우의 언덕 — 귀부의 예감',         tier:4, priceMod:1.6,  pos:{x:388,y:132}},
   {id:'persia',   name:'페르시아',          sub:'시라즈 — 전설의 궁정 와인',           tier:5, priceMod:1.8,  pos:{x:695,y:330}},
   {id:'aegyptus', name:'아이깁투스',        sub:'알렉산드리아 — 나일의 황금 교역로',   tier:5, priceMod:1.85, pos:{x:520,y:428}},
+  {id:'albion',   name:'알비온',            sub:'안개의 섬 — 백악질 언덕의 잠재력',    tier:5, priceMod:1.9,  pos:{x:100,y:86}},
 ];
 const TIER_NAMES = {1:'WSET L1', 2:'WSET L2', 3:'WSET L3', 4:'Diploma', 5:'Master of Wine'};
 const FACTION_NAMES = {rome:'로마', georgia:'조지아'};
+// 난이도
+const DIFF = {
+  easy:  {label:'쉬움',   desc:'여유로운 순항 — 자원 넉넉, 재해 드묾, 5문제 중 3정답',
+          gold:150, seeds:4, supplies:45, passNeed:3, revealMult:3, quake:0.06, war:0.10, debt:0.06, priceMult:1.1},
+  normal:{label:'보통',   desc:'표준 — 5문제 중 3정답',
+          gold:100, seeds:3, supplies:30, passNeed:3, revealMult:4, quake:0.10, war:0.15, debt:0.10, priceMult:1.0},
+  hard:  {label:'어려움', desc:'혹독한 개척 — 자원 빠듯, 재해 잦음, 5문제 중 4정답',
+          gold:70,  seeds:2, supplies:20, passNeed:4, revealMult:5, quake:0.13, war:0.20, debt:0.13, priceMult:0.9},
+};
+function D(){ return DIFF[S.diff || 'normal']; }
 
 // ---------- 데이터: 퀴즈 (5단계 × 15문항) ----------
 const QUIZ = {
@@ -520,7 +539,8 @@ let pendingFaction = null;
 let pendingChar = null;
 let justWonId = null;
 
-function newState(faction, chr){
+function newState(faction, chr, diff){
+  const d = DIFF[diff] || DIFF.normal;
   const startId = faction === 'georgia' ? 'colchis' : 'latium';
   const regions = {};
   for(const r of REGIONS){
@@ -530,11 +550,12 @@ function newState(faction, chr){
   regions[startId].vineyards = [{stage:2}];
   regions[startId].b.market = true;
   return {
-    faction, startId, char:chr, charAt:startId,
-    gold:100, seeds:3, grapes:0, wine:2, supplies:30,
+    faction, startId, char:chr, charAt:startId, diff:diff || 'normal',
+    gold:d.gold, seeds:d.seeds, grapes:0, wine:2, supplies:d.supplies,
     year:1, seasonIdx:0,
     regions, merchantDeal:null, caravan:null,
     debts:0, collection:null, // 떼인 대금 장부 · 추심 진행 건
+    hintPaid:false,
     log:[], won:false,
   };
 }
@@ -576,6 +597,10 @@ function landPaths(){
   const land = 'fill="#ead9a8" stroke="#a89060" stroke-width="1.8" stroke-linejoin="round"';
   const glow = 'fill="none" stroke="#f6eccb" stroke-width="8" stroke-linejoin="round" opacity=".7"';
   const shapes = [
+    // 알비온 (브리튼 섬)
+    'M76,58 Q96,46 116,52 Q134,62 130,88 Q124,112 102,118 Q80,116 70,96 Q64,72 76,58 Z',
+    // 판노니아 (도나우 분지)
+    'M334,118 Q362,94 402,96 Q438,100 444,126 Q442,152 414,164 Q378,170 350,160 Q334,144 334,118 Z',
     // 이베리아
     'M20,255 Q42,236 74,234 Q100,228 122,238 Q142,246 150,264 Q154,284 144,304 Q134,330 112,346 Q88,358 62,350 Q38,340 26,316 Q12,286 20,255 Z',
     // 갈리아·게르마니아
@@ -635,7 +660,7 @@ function mapDoodads(){
 function routeLines(){
   // 티어 순 항로 (장식)
   let s = '';
-  const order = ['hispania','burdigala','gallia','germania','latium','campania','hellas','colchis','persia','aegyptus'];
+  const order = ['albion','hispania','burdigala','gallia','germania','pannonia','latium','campania','carthage','hellas','thracia','colchis','armenia','persia','aegyptus'];
   for(let i = 0; i < order.length - 1; i++){
     const a = REGIONS.find(r => r.id === order[i]).pos;
     const b = REGIONS.find(r => r.id === order[i+1]).pos;
@@ -886,11 +911,11 @@ function renderSeason(){
 }
 function sellPrice(r){
   const rs = S.regions[r.id];
-  let p = rs.price;
-  if(rs.b.cellar) p = Math.round(p * 1.3);
-  if(isGeorgia()) p = Math.round(p * 1.2);
+  let p = rs.price * D().priceMult;
+  if(rs.b.cellar) p = p * 1.3;
+  if(isGeorgia()) p = p * 1.2;
   if(S.merchantDeal && S.merchantDeal.type === 'sellx2') p = p * 2;
-  return p;
+  return Math.max(1, Math.round(p));
 }
 function seedCost(){ return (S.merchantDeal && S.merchantDeal.type === 'seedhalf') ? 5 : 10; }
 
@@ -898,7 +923,7 @@ function renderDetail(){
   const el = document.getElementById('detail');
   if(!selRegion){
     el.innerHTML = `<h2>지역을 선택하라</h2><div class="sub">지도의 마커를 눌러 지역 정보를 확인한다.</div>
-      <div class="dsec"><h4>목표</h4>10개 지역을 모두 정복하면 포도주 제국이 완성된다.
+      <div class="dsec"><h4>목표</h4>${REGIONS.length}개 지역을 모두 정복하면 포도주 제국이 완성된다.
       정복하려면 물자와 와인을 챙겨 원정을 떠나 <b>와인 지식 대결</b>에서 승리해야 한다.</div>
       <div class="dsec"><h4>순환</h4>개간 → 재배(계절 경과) → 수확 → 양조 → 판매/교역 → 원정</div>
       <div class="dsec"><h4>지도 읽기</h4>깃발 = 아군 영토 · 붉은 링 = 정복 가능 · 자물쇠 = 아직 봉인</div>
@@ -979,10 +1004,10 @@ function renderDetail(){
       html += `<div class="dsec"><h4>봉인된 땅</h4>더 낮은 티어의 지역을 먼저 정복해야 이곳으로 원정할 수 있다.</div>`;
     } else {
       html += `<div class="dsec"><h4>원정 — 와인 지식 대결</h4>
-        <div>난이도: <b>${TIER_NAMES[r.tier]}</b> — 5문제 중 3문제 이상 정답 시 정복.</div>
+        <div>난이도: <b>${TIER_NAMES[r.tier]}</b> — 5문제 중 ${D().passNeed}문제 이상 정답 시 정복.</div>
         <div style="margin-top:6px;">원정 비용: <b>물자 ${supNeed}</b> + <b>와인 ${wineNeed}병</b> (현지 지배층에게 바칠 선물)</div>
         <div class="centerbtns"><button class="wine" onclick="startConquest('${r.id}')" ${S.supplies < supNeed || S.wine < wineNeed ? 'disabled' : ''}>원정 개시</button></div>
-        <div style="font-size:11px; opacity:.7; margin-top:6px;">모르는 문제는 「정답 확인하기」— 단, 물자 ${r.tier*4}이 사라진다. 시간의 모래가 다 떨어지면 오답.</div></div>`;
+        <div style="font-size:11px; opacity:.7; margin-top:6px;">모르는 문제는 「정답 확인하기」(물자 ${r.tier*D().revealMult}) 또는 「오답 2개 지우기」(물자 ${r.tier*2}). 시간의 모래가 다 떨어지면 오답.</div></div>`;
     }
     html += `<div class="dsec"><h4>정보</h4>와인 시세 ${sellPrice(r)}G · 정복 시 이 시장이 열린다.</div>`;
   }
@@ -1041,12 +1066,24 @@ function adviseNext(){
 function renderHint(){
   const el = document.getElementById('hintbar');
   if(!S || !S.char){ el.classList.add('hidden'); return; }
-  const h = adviseNext();
   el.classList.remove('hidden');
-  el.innerHTML = `<span class="tag">길잡이</span><span>${h.msg}</span>`;
-  el.onclick = h.target
-    ? () => selectRegion(h.target)
-    : () => { nextSeason(); save(); };
+  if(S.hintPaid){
+    const h = adviseNext();
+    el.innerHTML = `<span class="tag">길잡이</span><span>${h.msg}</span>`;
+    el.onclick = h.target
+      ? () => selectRegion(h.target)
+      : () => { nextSeason(); save(); };
+  } else {
+    el.innerHTML = `<span class="tag">길잡이</span><span>무엇을 할지 막막한가? 길잡이가 조언해준다. (이번 계절 동안 유효)</span>
+      <button class="small" ${S.supplies < 2 ? 'disabled' : ''} onclick="event.stopPropagation(); askGuide()">묻기 (물자 2)</button>`;
+    el.onclick = null;
+  }
+}
+function askGuide(){
+  if(S.supplies < 2 || S.hintPaid) return;
+  S.supplies -= 2;
+  S.hintPaid = true;
+  sfx('coin'); renderAll(); save();
 }
 function renderAll(){ renderPlayer(); renderRes(); renderSeason(); renderHint(); renderMap(); renderDetail(); }
 
@@ -1162,6 +1199,7 @@ function nextSeason(){
   if(S.seasonIdx > 3){ S.seasonIdx = 0; S.year++; }
   const seasonName = SEASONS[S.seasonIdx];
   S.merchantDeal = null;
+  S.hintPaid = false;
   if(S.seasonIdx !== 3){
     for(const r of REGIONS){
       const rs = S.regions[r.id];
@@ -1208,7 +1246,9 @@ function nextSeason(){
 function rollEvent(){
   const roll = Math.random();
   const owned = REGIONS.filter(r => S.regions[r.id].owned);
-  if(roll < 0.10){
+  const d = D();
+  let p = 0;
+  if(roll < (p += d.quake)){
     const r = owned[Math.floor(Math.random() * owned.length)];
     const rs = S.regions[r.id];
     const builtKeys = Object.keys(rs.b).filter(k => rs.b[k]);
@@ -1223,7 +1263,7 @@ function rollEvent(){
       log(`${r.name}에 지진이 났지만 다행히 피해는 없었다.`, 'evt');
     }
     sfx('bad');
-  } else if(roll < 0.25){
+  } else if(roll < (p += d.war)){
     const r = owned[Math.floor(Math.random() * owned.length)];
     const rs = S.regions[r.id];
     if(rs.b.wall && isRome()){
@@ -1236,7 +1276,7 @@ function rollEvent(){
       startDefense(r);
       return;
     }
-  } else if(roll < 0.35){
+  } else if(roll < (p += d.debt)){
     if(S.gold >= 50){
       const lost = Math.round(S.gold * 0.15);
       S.gold -= lost;
@@ -1246,13 +1286,13 @@ function rollEvent(){
     } else {
       log('수상한 상인이 외상을 요구했지만 현명하게 거절했다.');
     }
-  } else if(roll < 0.45){
+  } else if(roll < (p += 0.10)){
     let grew = 0;
     for(const r of owned){
       for(const v of S.regions[r.id].vineyards) if(v.stage < 3){ v.stage++; grew++; }
     }
     log(grew ? '완벽한 날씨! 모든 포도밭이 쑥쑥 자랐다.' : '완벽한 날씨가 이어진다.', 'good');
-  } else if(roll < 0.60){
+  } else if(roll < (p += 0.15)){
     if(Math.random() < 0.5){
       S.merchantDeal = {type:'sellx2'};
       log('먼 나라의 상인이 찾아왔다! 이번 계절 와인 판매가 2배!', 'good');
@@ -1261,7 +1301,7 @@ function rollEvent(){
       log('종묘상이 마을에 들렀다. 이번 계절 포도씨 반값(5G)!', 'good');
     }
     sfx('fanfare');
-  } else if(roll < 0.70){
+  } else if(roll < (p += 0.10)){
     S.supplies += 5;
     log('유랑 음유시인이 포도밭 노래를 부르고 갔다. 일꾼들의 사기가 올라 물자 +5.', 'good');
   }
@@ -1305,14 +1345,35 @@ function showQuestion(){
   document.getElementById('qtext').textContent = q.q;
   document.getElementById('qexp').classList.add('hidden');
   document.getElementById('qnextbtn').classList.add('hidden');
-  const revealCost = r.tier * 4;
+  const revealCost = r.tier * D().revealMult;
   const rb = document.getElementById('revealbtn');
   rb.textContent = `정답 확인하기 (물자 -${revealCost})`;
   rb.disabled = S.supplies < revealCost;
   rb.classList.remove('hidden');
+  // 작은 힌트: 오답 2개 제거 (50:50)
+  quiz.fiftyUsed = false;
+  const fiftyCost = r.tier * 2;
+  const fb = document.getElementById('fiftybtn');
+  fb.textContent = `오답 2개 지우기 (물자 -${fiftyCost})`;
+  fb.disabled = S.supplies < fiftyCost;
+  fb.classList.remove('hidden');
   document.getElementById('qchoices').innerHTML = q.c.map((c,i) =>
     `<button class="choice" onclick="answer(${i})">${['Ⅰ','Ⅱ','Ⅲ','Ⅳ'][i]}. ${c}</button>`).join('');
   startSand();
+}
+function fifty(){
+  if(!quiz || quiz.fiftyUsed) return;
+  const q = quiz.qs[quiz.idx];
+  const cost = quiz.region.tier * 2;
+  if(S.supplies < cost) return;
+  S.supplies -= cost;
+  quiz.fiftyUsed = true;
+  const wrong = [0,1,2,3].filter(i => i !== q.a).sort(() => Math.random() - 0.5).slice(0, 2);
+  document.querySelectorAll('#qchoices .choice').forEach((b, idx) => {
+    if(wrong.includes(idx)){ b.disabled = true; b.onclick = null; b.style.opacity = .3; }
+  });
+  document.getElementById('fiftybtn').disabled = true;
+  sfx('coin'); renderRes();
 }
 function startSand(){
   stopSand();
@@ -1338,7 +1399,7 @@ function answer(i){
 function reveal(){
   stopSand();
   const q = quiz.qs[quiz.idx];
-  const cost = quiz.region.tier * 4;
+  const cost = quiz.region.tier * D().revealMult;
   if(S.supplies < cost) return;
   S.supplies -= cost;
   quiz.correct++;
@@ -1355,6 +1416,7 @@ function markChoices(q, picked){
     else if(idx === picked) b.classList.add('wrongpick');
   });
   document.getElementById('revealbtn').classList.add('hidden');
+  document.getElementById('fiftybtn').classList.add('hidden');
 }
 function showExp(q, headline){
   const e = document.getElementById('qexp');
@@ -1367,7 +1429,7 @@ function nextQuestion(){
   if(quiz.idx < quiz.qs.length){ showQuestion(); return; }
   document.getElementById('quizmodal').classList.add('hidden');
   if(quiz.mode === 'conquest'){
-    if(quiz.correct >= 3){
+    if(quiz.correct >= D().passNeed){
       const id = quiz.region.id;
       S.regions[id].owned = true;
       justWonId = id;
@@ -1410,9 +1472,9 @@ function winGame(){
   stopMusic(); playVictory();
   document.getElementById('endtitle').textContent = 'VINUM IMPERIUM!';
   document.getElementById('endchar').innerHTML = charSVG(S.faction, S.char.gender, S.char.vi, 70);
-  document.getElementById('endvines').textContent = 'Y Y Y Y Y Y Y Y Y Y';
+  document.getElementById('endvines').textContent = Array(REGIONS.length).fill('Y').join(' ');
   document.getElementById('endtext').innerHTML =
-    `<b>${S.char.name}</b>, ${S.year}년 만에 10개 지역이 모두 포도밭으로 물들었다.<br>` +
+    `<b>${S.char.name}</b>, ${S.year}년 만에 ${REGIONS.length}개 지역이 모두 포도밭으로 물들었다.<br>` +
     (isGeorgia() ? '8000년 크베브리의 후예가 세계를 와인으로 정복했다.' : '로마의 길 위로 와인이 흐른다. SPQR!') +
     `<br><br>그대는 이제 진정한 <b>Master of Wine이자 황제</b>다.`;
   document.getElementById('hallinput').classList.remove('hidden');
@@ -1644,6 +1706,14 @@ function load(){
 }
 
 // ---------- 시작 플로우 ----------
+let pendingDiff = 'normal';
+function renderDiffRow(){
+  document.getElementById('diffrow').innerHTML = Object.keys(DIFF).map(k =>
+    `<button class="small" style="${pendingDiff === k ? 'outline:3px solid var(--wine); background:#fbe0b0;' : ''}"
+      onclick="pickDiff('${k}')" title="${DIFF[k].desc}">${DIFF[k].label}</button>`).join('') +
+    `<div style="font-size:11px; opacity:.75; width:100%; margin-top:2px;">${DIFF[pendingDiff].desc}</div>`;
+}
+function pickDiff(k){ pendingDiff = k; renderDiffRow(); sfx('good'); }
 function pickFaction(faction){
   pendingFaction = faction;
   pendingChar = null;
@@ -1684,7 +1754,7 @@ function confirmChar(){
   const name = document.getElementById('namein').value.trim().slice(0, 12);
   if(!pendingChar || !name) return;
   const chr = {gender:pendingChar.gender, vi:pendingChar.vi, name};
-  S = newState(pendingFaction, chr);
+  S = newState(pendingFaction, chr, pendingDiff);
   charPos = null; travel = null; // 시작 지역에서 스폰
   document.getElementById('charmodal').classList.add('hidden');
   selRegion = S.startId;
@@ -1699,11 +1769,13 @@ function confirmChar(){
 document.getElementById('nextseason').addEventListener('click', () => { nextSeason(); save(); });
 document.getElementById('musicbtn').addEventListener('click', toggleMusic);
 document.getElementById('revealbtn').addEventListener('click', reveal);
+document.getElementById('fiftybtn').addEventListener('click', fifty);
 document.getElementById('qnextbtn').addEventListener('click', nextQuestion);
 document.getElementById('namein').addEventListener('input', updateCharOk);
 
 // 이어하기 (구버전 세이브는 캐릭터 생성만 추가로)
 (function init(){
+  renderDiffRow();
   renderHall(document.getElementById('starthall'));
   const saved = load();
   if(saved && !saved.won){
@@ -1711,6 +1783,11 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
     if(!S.charAt) S.charAt = S.startId;
     S.debts = S.debts || 0;
     S.collection = S.collection || null;
+    S.diff = S.diff || 'normal';
+    S.hintPaid = !!S.hintPaid;
+    for(const r of REGIONS){ // 확장으로 추가된 지역 채우기
+      if(!S.regions[r.id]) S.regions[r.id] = {owned:false, vineyards:[], b:{winery:false, market:false, wall:false, cellar:false}, price:basePrice(r)};
+    }
     selRegion = S.startId;
     document.getElementById('startmodal').classList.add('hidden');
     if(!S.char){
