@@ -1422,38 +1422,82 @@ function winGame(){
 }
 
 // ---------- 명예의 전당 (MW 클리어 기록) ----------
+// 전역 전당: Apps Script 웹앱 URL. 비워두면 이 브라우저(localStorage)에만 기록.
+const HALL_API = 'https://script.google.com/macros/s/AKfycbz0mVUaIdEgtERRcaS8xvbYeNH5CwMpzJqzAbXErHrNhXX2_86guQ0sCgioTivKGJ5iPg/exec';
+
 function hallList(){
   try{ return JSON.parse(localStorage.getItem('vinum_hall') || '[]'); }
   catch(e){ return []; }
 }
 function escHtml(s){
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function fmtHallDate(raw){
+  // 시트가 날짜 셀로 자동 변환한 긴 날짜 문자열도 YYYY-MM-DD로 정리 (로컬 기준)
+  const s = String(raw || '');
+  if(/^\d{4}-\d{2}-\d{2}/.test(s)) return s.slice(0, 10);
+  const d = new Date(s);
+  if(isNaN(d)) return s.slice(0, 10);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+function sanitizeHallEntry(h){
+  return {
+    name:String(h.name || '').slice(0, 12),
+    faction:h.faction === 'rome' ? 'rome' : 'georgia',
+    gender:h.gender === 'm' ? 'm' : 'f',
+    vi:Math.max(0, Math.min(4, parseInt(h.vi, 10) || 0)),
+    years:Math.max(1, parseInt(h.years, 10) || 1),
+    comment:String(h.comment || '').slice(0, 120),
+    date:fmtHallDate(h.date),
+  };
 }
 function saveHallEntry(){
   const comment = document.getElementById('hallcomment').value.trim().slice(0, 120);
-  const hall = hallList();
-  hall.unshift({
+  const entry = {
     name:S.char.name, faction:S.faction, gender:S.char.gender, vi:S.char.vi,
     years:S.year, comment,
     date:new Date().toISOString().slice(0, 10),
-  });
+  };
+  // 로컬 보관 (오프라인 폴백)
+  const hall = hallList();
+  hall.unshift(entry);
   localStorage.setItem('vinum_hall', JSON.stringify(hall.slice(0, 30)));
   document.getElementById('hallinput').classList.add('hidden');
-  renderHall(document.getElementById('endhall'));
+  const el = document.getElementById('endhall');
+  if(HALL_API){
+    el.innerHTML = '<div class="hall"><h3>─ 명예의 전당에 새기는 중... ─</h3></div>';
+    fetch(HALL_API, {method:'POST', headers:{'Content-Type':'text/plain'}, body:JSON.stringify(entry)})
+      .then(() => loadHall(el))
+      .catch(() => renderHallInto(el, hall));
+  } else {
+    renderHallInto(el, hall);
+  }
   sfx('fanfare');
 }
-function renderHall(el){
-  const hall = hallList();
-  if(!hall.length){ el.innerHTML = ''; return; }
+function renderHallInto(el, list, note){
+  if(!list.length){ el.innerHTML = ''; return; }
   el.innerHTML = `<div class="hall"><h3>─ 명예의 전당 · MASTERS OF WINE ─</h3>` +
-    hall.map(h => `<div class="hallentry">
+    list.map(raw => {
+      const h = sanitizeHallEntry(raw);
+      return `<div class="hallentry">
       ${charFace(h.faction, h.gender, h.vi, 30)}
       <div>
         <span class="he-name">${escHtml(h.name)}</span>
-        <span class="he-meta">· ${FACTION_NAMES[h.faction]} · ${h.years}년 만에 세계 정복 · ${h.date}</span>
+        <span class="he-meta">· ${FACTION_NAMES[h.faction]} · ${h.years}년 만에 세계 정복${h.date ? ' · ' + escHtml(h.date) : ''}</span>
         ${h.comment ? `<div class="he-cmt">“${escHtml(h.comment)}”</div>` : ''}
-      </div></div>`).join('') + `</div>`;
+      </div></div>`;
+    }).join('') +
+    (note ? `<div style="font-size:10.5px; opacity:.6; text-align:center; margin-top:6px;">${note}</div>` : '') + `</div>`;
 }
+function loadHall(el){
+  renderHallInto(el, hallList(), HALL_API ? '전역 전당 불러오는 중...' : '');
+  if(!HALL_API) return;
+  fetch(HALL_API)
+    .then(r => r.json())
+    .then(list => { if(Array.isArray(list)) renderHallInto(el, list); })
+    .catch(() => renderHallInto(el, hallList(), '전역 전당 연결 실패 — 이 기기 기록만 표시'));
+}
+function renderHall(el){ loadHall(el); }
 
 // ---------- 사운드 ----------
 let AC = null, master = null, noiseBuf = null;
