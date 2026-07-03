@@ -138,6 +138,24 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
 .charcell.sel{border-color:var(--wine); background:#fdeede;}
 .charcell .cname{font-size:10px; font-weight:700; opacity:.75;}
 .grouplabel{font-size:12px; font-weight:800; color:var(--wine); margin:10px 0 4px; letter-spacing:1px;}
+/* 명예의 전당 */
+.hall{
+  background:linear-gradient(#fdf6e0,#f5e8c8); border:2px solid var(--gold); border-radius:14px;
+  padding:12px 14px; margin-top:14px; text-align:left;
+}
+.hall h3{
+  color:#8a6a1a; font-size:14px; letter-spacing:2px; text-align:center; margin-bottom:8px;
+  border-bottom:1.5px solid var(--gold); padding-bottom:6px;
+}
+.hallentry{
+  display:flex; gap:10px; align-items:flex-start; padding:7px 4px;
+  border-bottom:1px dashed #d9c48a; font-size:12.5px;
+}
+.hallentry:last-child{border-bottom:none;}
+.hallentry svg{background:#fff; border-radius:50%; border:2px solid var(--gold); flex-shrink:0;}
+.hallentry .he-name{font-weight:800; color:var(--wine);}
+.hallentry .he-meta{font-size:11px; opacity:.65;}
+.hallentry .he-cmt{margin-top:2px; font-style:italic; color:#5a4a30;}
 #qavatar svg{background:#fff; border-radius:50%; border:2px solid var(--gold); vertical-align:middle;}
 </style>
 </head>
@@ -191,6 +209,7 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
       퀴즈에서 모르는 문제는 「정답 확인하기」로 넘어갈 수 있지만 물자가 사라진다.
       모래시계(시간의 모래)가 다 떨어지면 오답 처리.
     </p>
+    <div id="starthall"></div>
   </div>
 </div>
 
@@ -233,7 +252,13 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
     <div id="endchar"></div>
     <div class="vinerow" id="endvines"></div>
     <p id="endtext" style="margin:12px 0; font-size:14px;"></p>
-    <button onclick="localStorage.removeItem('vinum_save'); location.reload()" class="wine">새 게임</button>
+    <div id="hallinput">
+      <textarea id="hallcomment" maxlength="120" placeholder="Master of Wine이 된 소감을 남겨라 (명예의 전당에 새겨진다)"
+        style="width:100%; height:64px; padding:10px; border-radius:10px; border:2px solid var(--gold); background:var(--card); font-family:inherit; font-size:13px; resize:none;"></textarea>
+      <div class="centerbtns"><button class="leaf" onclick="saveHallEntry()">명예의 전당에 새기기</button></div>
+    </div>
+    <div id="endhall"></div>
+    <div class="centerbtns"><button onclick="localStorage.removeItem('vinum_save'); location.reload()" class="wine">새 게임</button></div>
   </div>
 </div>
 
@@ -1390,8 +1415,44 @@ function winGame(){
     `<b>${S.char.name}</b>, ${S.year}년 만에 10개 지역이 모두 포도밭으로 물들었다.<br>` +
     (isGeorgia() ? '8000년 크베브리의 후예가 세계를 와인으로 정복했다.' : '로마의 길 위로 와인이 흐른다. SPQR!') +
     `<br><br>그대는 이제 진정한 <b>Master of Wine이자 황제</b>다.`;
+  document.getElementById('hallinput').classList.remove('hidden');
+  document.getElementById('endhall').innerHTML = '';
   document.getElementById('endmodal').classList.remove('hidden');
   localStorage.removeItem('vinum_save');
+}
+
+// ---------- 명예의 전당 (MW 클리어 기록) ----------
+function hallList(){
+  try{ return JSON.parse(localStorage.getItem('vinum_hall') || '[]'); }
+  catch(e){ return []; }
+}
+function escHtml(s){
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+function saveHallEntry(){
+  const comment = document.getElementById('hallcomment').value.trim().slice(0, 120);
+  const hall = hallList();
+  hall.unshift({
+    name:S.char.name, faction:S.faction, gender:S.char.gender, vi:S.char.vi,
+    years:S.year, comment,
+    date:new Date().toISOString().slice(0, 10),
+  });
+  localStorage.setItem('vinum_hall', JSON.stringify(hall.slice(0, 30)));
+  document.getElementById('hallinput').classList.add('hidden');
+  renderHall(document.getElementById('endhall'));
+  sfx('fanfare');
+}
+function renderHall(el){
+  const hall = hallList();
+  if(!hall.length){ el.innerHTML = ''; return; }
+  el.innerHTML = `<div class="hall"><h3>─ 명예의 전당 · MASTERS OF WINE ─</h3>` +
+    hall.map(h => `<div class="hallentry">
+      ${charFace(h.faction, h.gender, h.vi, 30)}
+      <div>
+        <span class="he-name">${escHtml(h.name)}</span>
+        <span class="he-meta">· ${FACTION_NAMES[h.faction]} · ${h.years}년 만에 세계 정복 · ${h.date}</span>
+        ${h.comment ? `<div class="he-cmt">“${escHtml(h.comment)}”</div>` : ''}
+      </div></div>`).join('') + `</div>`;
 }
 
 // ---------- 사운드 ----------
@@ -1599,6 +1660,7 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
 
 // 이어하기 (구버전 세이브는 캐릭터 생성만 추가로)
 (function init(){
+  renderHall(document.getElementById('starthall'));
   const saved = load();
   if(saved && !saved.won){
     S = saved;
