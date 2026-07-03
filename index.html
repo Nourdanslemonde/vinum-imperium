@@ -110,6 +110,20 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
 #sandlabel{position:absolute; inset:0; font-size:10px; text-align:center; line-height:14px; font-weight:800; color:#5c4a1e;}
 .qmeta{display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; color:var(--wine); margin-bottom:6px;}
 .exp{background:#fdf6e3; border-left:4px solid var(--gold); padding:8px 10px; font-size:13px; margin-top:8px; border-radius:6px;}
+/* 인트로 스토리텔링 */
+#intromodal{background:radial-gradient(circle at 50% 35%, rgba(60,30,18,.9), rgba(18,9,5,.97)); flex-direction:column;}
+.introstage{max-width:540px; width:100%; text-align:center; color:#f5ead3;}
+.introslide{display:none;}
+.introslide.on{display:block; animation:introin 1s ease both;}
+@keyframes introin{from{opacity:0; transform:translateY(16px) scale(.97);} to{opacity:1; transform:none;}}
+.introslide .art{margin:0 auto 20px; width:200px; max-width:70%;}
+.introslide .art svg{width:100%; height:auto; filter:drop-shadow(0 6px 14px rgba(0,0,0,.5));}
+.introslide .chap{font-size:12px; letter-spacing:4px; color:var(--gold); margin-bottom:12px; font-weight:700;}
+.introslide p{font-size:17px; line-height:1.75; font-weight:600; text-shadow:0 2px 10px rgba(0,0,0,.6);}
+.introdots{display:flex; gap:7px; justify-content:center; margin-top:20px;}
+.introdots i{width:8px; height:8px; border-radius:50%; background:rgba(245,234,211,.28); transition:background .3s;}
+.introdots i.on{background:var(--gold);}
+.introctrl{display:flex; gap:10px; justify-content:center; margin-top:20px;}
 .factioncard{
   background:var(--card); border-radius:14px; padding:14px; margin:8px 0; cursor:pointer;
   border:3px solid transparent;
@@ -167,6 +181,7 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
     <div id="seasonbox">
       <span id="seasonlabel">1년차 봄</span>
       <button id="nextseason" class="leaf">다음 계절 ▸</button>
+      <button id="helpbtn" class="small" onclick="openHowTo(false)">게임 방법</button>
       <button id="musicbtn" class="small">♪ 음악 켜기</button>
     </div>
   </header>
@@ -182,8 +197,36 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
   <div id="log"></div>
 </div>
 
+<!-- 인트로: 스토리텔링 애니메이션 -->
+<div class="modalbg hidden" id="intromodal">
+  <div class="introstage" id="introstage">
+    <div id="introslides"></div>
+    <div class="introdots" id="introdots"></div>
+    <div class="introctrl">
+      <button class="small" onclick="introSkip()">건너뛰기 ▸▸</button>
+      <button class="wine" id="intronext" onclick="introNext()">다음 ▸</button>
+    </div>
+  </div>
+</div>
+
+<!-- 게임 방법 (규칙) -->
+<div class="modalbg hidden" id="howtomodal">
+  <div class="modal">
+    <h2>이렇게 플레이한다</h2>
+    <div class="dsec"><h4>목표</h4>고대 세계 15개 지역을 모두 정복해 포도주 제국을 완성한다.</div>
+    <div class="dsec"><h4>핵심 순환</h4>개간(씨+골드) → 재배(「다음 계절」로 성장) → 수확 → 양조(포도 2 → 와인 1) → 판매 → 원정.</div>
+    <div class="dsec"><h4>자원</h4><b>골드</b>는 와인 판매로 벌고 · <b>물자</b>는 시장 구매/이벤트로 · <b>포도씨·포도·와인</b>은 재배·양조로 얻는다.</div>
+    <div class="dsec"><h4>시장 &amp; 판매</h4>와인은 <b>시장이 있는 지역</b>에서만 판매·구매·카라반이 된다. 정복해도 시장은 자동으로 안 생기니 <b>직접 건설</b>해야 한다. 상단 자원바에 「최고 시세」가 늘 보이고, 시장 없는 지역에서도 <b>내 시장으로 보내 팔기</b>가 가능하다.</div>
+    <div class="dsec"><h4>원정 &amp; 퀴즈</h4>물자와 와인을 바치고 그 지역 티어(WSET L1 → Master of Wine)의 <b>와인 퀴즈</b>에서 기준 이상 맞히면 정복. 모르는 문제는 「정답 확인하기」·「오답 2개 지우기」(물자 소모), 모래시계가 다 떨어지면 오답.</div>
+    <div class="dsec"><h4>지도 읽기</h4>붉은 펄스 = 지금 정복 가능 · 회색 점선 성채 = 봉인은 풀렸지만 물자·와인 부족 · 자물쇠 = 하위 티어 먼저.</div>
+    <div class="dsec"><h4>이벤트</h4>계절마다 좋은 일이 나쁜 일보다 자주 일어난다(1.15배). 지진·전쟁·가뭄·우박·파업을 견디고, 선호층·와인값 상승·투자자·풍년·상인 특가를 노려라.</div>
+    <div class="dsec"><h4>조작</h4>방향키/WASD 이동 · 스페이스 점프 · 지역 클릭 = 달려가기 · 가까이 가면 자동 선택.</div>
+    <div class="centerbtns"><button class="wine" id="howtobtn">계속 ▸</button></div>
+  </div>
+</div>
+
 <!-- 시작 1: 진영 선택 -->
-<div class="modalbg" id="startmodal">
+<div class="modalbg hidden" id="startmodal">
   <div class="modal">
     <h2>VINUM IMPERIUM — 포도주 정복기</h2>
     <p style="font-size:13px; margin-bottom:10px;">
@@ -1916,6 +1959,84 @@ function load(){
 // ---------- 시작 플로우 ----------
 let pendingDiff = 'normal';
 let resumingChar = false; // 구버전 세이브에 캐릭터만 추가로 부여하는 중인지
+
+// ---------- 인트로 스토리텔링 ----------
+const INTRO = [
+ {chap:'제1장 · 꿈', text:'세상을 와인으로 물들이려는 원대한 꿈. 아버지와 어머니는 그 계획과 사랑으로 나를 길렀다.',
+  art:`<svg viewBox="0 0 200 150"><circle cx="100" cy="40" r="24" fill="#c9a227"/>
+   <g stroke="#c9a227" stroke-width="3" stroke-linecap="round"><line x1="100" y1="4" x2="100" y2="12"/><line x1="66" y1="40" x2="74" y2="40"/><line x1="126" y1="40" x2="134" y2="40"/><line x1="76" y1="16" x2="81" y2="21"/><line x1="124" y1="16" x2="119" y2="21"/></g>
+   <g fill="#8e3a44"><circle cx="70" cy="92" r="11"/><rect x="60" y="102" width="20" height="34" rx="9"/></g>
+   <g fill="#5d7a4e"><circle cx="130" cy="92" r="11"/><rect x="120" y="102" width="20" height="34" rx="9"/></g>
+   <g fill="#722f37"><circle cx="94" cy="110" r="5"/><circle cx="106" cy="110" r="5"/><circle cx="100" cy="119" r="5"/><circle cx="100" cy="129" r="4.5"/></g>
+   <path d="M100,102 q7,-8 15,-9" stroke="#5d7a4e" stroke-width="3" fill="none"/></svg>`},
+ {chap:'제2장 · 비극', text:'그러나 어느 날, 해상무역의 재난이 모든 것을 삼켰다. 나는 부모님을 잃었다.',
+  art:`<svg viewBox="0 0 200 150"><path d="M0,150 L0,94 Q50,80 100,94 T200,94 L200,150 Z" fill="#41576a"/>
+   <path d="M0,150 L0,112 Q50,98 100,112 T200,112 L200,150 Z" fill="#2f4356"/>
+   <g transform="translate(100,84) rotate(-9)"><path d="M-26,4 L26,4 L18,20 L-18,20 Z" fill="#6b4a2e"/><rect x="-2" y="-30" width="4" height="34" fill="#4a3420"/><path d="M2,-28 L22,-8 L2,-8 Z" fill="#e8dcc0"/><path d="M-2,-24 L-18,-8 L-2,-8 Z" fill="#d9c9a3"/></g>
+   <path d="M152,8 L142,42 L152,42 L140,74" stroke="#c9a227" stroke-width="3" fill="none"/></svg>`},
+ {chap:'제3장 · 약탈', text:'어린 내게 남겨진 부모님의 인프라와 막대한 재산은, 친척과 친구를 빙자한 사기꾼들의 손에 모조리 넘어갔다.',
+  art:`<svg viewBox="0 0 200 150"><path d="M38,42 L118,42 L108,54 L48,54 Z" fill="#8e3a44"/>
+   <g fill="#d9c9a3"><rect x="50" y="54" width="10" height="58"/><rect x="72" y="54" width="10" height="58"/><rect x="94" y="54" width="10" height="58"/></g>
+   <rect x="42" y="112" width="74" height="8" fill="#8a7a5a"/>
+   <path d="M80,42 L75,70 L84,90 L77,112" stroke="#3b2f22" stroke-width="2" fill="none"/>
+   <g fill="#c9a227" stroke="#8a6a10" stroke-width="1"><circle cx="140" cy="94" r="9"/><circle cx="159" cy="102" r="8"/><circle cx="150" cy="118" r="7"/></g>
+   <path d="M122,84 q20,-6 36,2" stroke="#6b5a3e" stroke-width="2" fill="none"/></svg>`},
+ {chap:'제4장 · 남은 것', text:'그들이 끝내 빼앗지 못한 단 하나 — 와인을 사랑하는 이 마음.',
+  art:`<svg viewBox="0 0 200 150"><g fill="#3b2f22"><circle cx="100" cy="48" r="15"/><rect x="86" y="60" width="28" height="54" rx="13"/></g>
+   <g fill="#8e3a44"><circle cx="100" cy="92" r="6"/><circle cx="91" cy="100" r="5.5"/><circle cx="109" cy="100" r="5.5"/><circle cx="100" cy="109" r="5"/></g>
+   <path d="M100,84 q6,-7 12,-7" stroke="#5d7a4e" stroke-width="2.5" fill="none"/></svg>`},
+ {chap:'제5장 · 재기', text:'나는 다시 시작한다. 포도씨 한 줌, 그리고 꺾이지 않는 의지로.',
+  art:`<svg viewBox="0 0 200 150"><path d="M60,112 Q58,86 78,86 L122,86 Q142,86 140,112 Q140,126 100,126 Q60,126 60,112 Z" fill="#d9a26f"/>
+   <path d="M100,86 L100,56" stroke="#5d7a4e" stroke-width="3"/>
+   <path d="M100,70 Q85,62 83,49 Q98,51 100,66 Z" fill="#5d7a4e"/>
+   <path d="M100,64 Q115,55 117,42 Q102,44 100,60 Z" fill="#6e8a58"/>
+   <circle cx="100" cy="90" r="4" fill="#6b4a2e"/></svg>`},
+ {chap:'제6장 · 사명', text:'부모님이 끝내 이루지 못한 꿈. 이제 내가 와인으로, 세계를 제패한다.',
+  art:`<svg viewBox="0 0 200 150"><rect x="52" y="46" width="96" height="64" rx="6" fill="#efe0bf" stroke="#8a7a5a" stroke-width="2"/>
+   <path d="M64,62 Q84,56 104,64 T140,62" stroke="#8a7a5a" stroke-width="1.5" fill="none"/>
+   <path d="M64,80 Q90,74 116,82 T140,78" stroke="#8a7a5a" stroke-width="1.5" fill="none"/>
+   <line x1="100" y1="92" x2="100" y2="66" stroke="#6b5a3e" stroke-width="2"/>
+   <path d="M100,66 L119,71 L100,77 Z" fill="#8e3a44"/>
+   <path d="M42,112 Q30,82 54,58" stroke="#5d7a4e" stroke-width="4" fill="none"/>
+   <path d="M158,112 Q170,82 146,58" stroke="#5d7a4e" stroke-width="4" fill="none"/></svg>`},
+];
+let introIdx = 0;
+function startIntro(){
+  introIdx = 0;
+  document.getElementById('startmodal').classList.add('hidden');
+  document.getElementById('introslides').innerHTML = INTRO.map((s,i) =>
+    `<div class="introslide" data-i="${i}"><div class="chap">${s.chap}</div><div class="art">${s.art}</div><p>${s.text}</p></div>`).join('');
+  document.getElementById('introdots').innerHTML = INTRO.map((_,i) => `<i data-i="${i}"></i>`).join('');
+  document.getElementById('intromodal').classList.remove('hidden');
+  renderIntro();
+}
+function renderIntro(){
+  document.querySelectorAll('#introslides .introslide').forEach(el => el.classList.toggle('on', +el.dataset.i === introIdx));
+  document.querySelectorAll('#introdots i').forEach(el => el.classList.toggle('on', +el.dataset.i === introIdx));
+  document.getElementById('intronext').textContent = introIdx === INTRO.length - 1 ? '플레이 방법 ▸' : '다음 ▸';
+}
+function introNext(){
+  if(introIdx < INTRO.length - 1){ introIdx++; renderIntro(); sfx('good'); }
+  else openHowTo(true);
+}
+function introSkip(){
+  document.getElementById('intromodal').classList.add('hidden');
+  document.getElementById('startmodal').classList.remove('hidden');
+}
+// 게임 방법: fromFlow면 시작 플로우(→ 진영 선택), 아니면 게임 중 단순 열람(닫기)
+function openHowTo(fromFlow){
+  document.getElementById('intromodal').classList.add('hidden');
+  const btn = document.getElementById('howtobtn');
+  if(fromFlow){
+    btn.textContent = '진영 고르러 가기 ▸';
+    btn.onclick = () => { document.getElementById('howtomodal').classList.add('hidden'); document.getElementById('startmodal').classList.remove('hidden'); };
+  } else {
+    btn.textContent = '닫기';
+    btn.onclick = () => document.getElementById('howtomodal').classList.add('hidden');
+  }
+  document.getElementById('howtomodal').classList.remove('hidden');
+}
+
 function renderDiffRow(){
   document.getElementById('diffrow').innerHTML = Object.keys(DIFF).map(k =>
     `<button class="small" style="${pendingDiff === k ? 'outline:3px solid var(--wine); background:#fbe0b0;' : ''}"
@@ -2019,6 +2140,8 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
     }
     log('저장된 제국을 이어받았다. 정복을 계속하자!');
     renderAll();
+  } else {
+    startIntro(); // 새 게임: 스토리 인트로 → 게임 방법 → 진영 선택
   }
   requestAnimationFrame(gameLoop); // 무브먼트 루프 시동
 })();
