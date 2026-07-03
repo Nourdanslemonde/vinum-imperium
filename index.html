@@ -38,6 +38,13 @@ button.small{padding:4px 9px; font-size:12px; border-radius:8px;}
 button.wine{background:var(--wine2); color:#fff;}
 button.leaf{background:var(--leaf); color:#fff;}
 #resbar{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;}
+#hintbar{
+  background:#fdf3d0; border:2px solid var(--gold); border-radius:12px; padding:8px 14px;
+  font-size:13px; font-weight:700; margin:0 0 10px; cursor:pointer;
+  box-shadow:0 3px 0 var(--shadow); display:flex; gap:9px; align-items:center;
+}
+#hintbar .tag{background:var(--gold); color:#3b2f22; font-size:11px; border-radius:6px; padding:2px 7px; flex-shrink:0;}
+#hintbar:hover{background:#fbe9b8;}
 .res{
   background:var(--card); border-radius:12px; padding:6px 14px; font-weight:700; font-size:14px;
   box-shadow:0 3px 0 var(--shadow); display:flex; gap:6px; align-items:center;
@@ -147,6 +154,7 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
   </header>
 
   <div id="resbar"></div>
+  <div id="hintbar" class="hidden"></div>
 
   <main>
     <section id="mapwrap"></section>
@@ -517,9 +525,17 @@ function maxOwnedTier(){
 function ownedCount(){ return REGIONS.filter(r => S.regions[r.id].owned).length; }
 
 // ---------- 로그 ----------
+function pick(arr){ return arr[Math.floor(Math.random() * arr.length)]; }
 function log(msg, cls){
-  S.log.push({msg, cls: cls || ''});
-  if(S.log.length > 60) S.log.shift();
+  // 같은 멘트 연속 반복 방지: 마지막 줄과 같으면 (×n)으로 접는다
+  const last = S.log[S.log.length - 1];
+  if(last && last.msg.replace(/ \(×\d+\)$/, '') === msg){
+    last.n = (last.n || 1) + 1;
+    last.msg = `${msg} (×${last.n})`;
+  } else {
+    S.log.push({msg, cls: cls || ''});
+    if(S.log.length > 60) S.log.shift();
+  }
   renderLog();
 }
 function renderLog(){
@@ -531,27 +547,64 @@ function renderLog(){
 // ---------- 지도 렌더 ----------
 const MAP_W = 780, MAP_H = 500;
 function landPaths(){
-  const land = 'fill="#e9dcae" stroke="#b9a06f" stroke-width="2" stroke-linejoin="round"';
+  const land = 'fill="#ead9a8" stroke="#a89060" stroke-width="1.8" stroke-linejoin="round"';
+  const glow = 'fill="none" stroke="#f6eccb" stroke-width="8" stroke-linejoin="round" opacity=".7"';
+  const shapes = [
+    // 이베리아
+    'M20,255 Q42,236 74,234 Q100,228 122,238 Q142,246 150,264 Q154,284 144,304 Q134,330 112,346 Q88,358 62,350 Q38,340 26,316 Q12,286 20,255 Z',
+    // 갈리아·게르마니아
+    'M112,90 Q150,70 196,64 Q250,56 298,70 Q324,84 322,116 Q318,148 302,172 Q284,198 258,212 Q232,230 196,228 Q160,226 136,206 Q116,184 112,150 Q106,118 112,90 Z',
+    // 이탈리아 장화
+    'M298,224 Q316,214 330,226 Q342,240 348,258 Q352,276 362,292 Q374,310 388,324 Q398,338 392,352 Q382,360 368,352 Q352,340 342,322 Q330,304 322,286 Q312,266 302,250 Q294,236 298,224 Z',
+    // 시칠리아·사르데냐·코르시카·크레타·키프로스
+    'M336,366 L364,360 L370,376 L344,384 Z',
+    'M262,300 Q272,296 276,306 Q278,322 270,332 Q260,334 256,322 Q254,308 262,300 Z',
+    'M266,262 Q276,258 278,268 Q280,282 272,290 Q262,288 262,276 Q262,266 266,262 Z',
+    'M436,392 L486,388 L494,398 L444,404 Z',
+    'M560,352 L586,348 L592,358 L566,362 Z',
+    // 발칸·그리스
+    'M388,214 Q422,210 448,226 Q470,240 476,266 Q480,296 472,322 Q466,344 450,358 Q438,366 430,356 Q424,342 428,328 Q416,322 410,306 Q400,282 394,258 Q386,234 388,214 Z',
+    // 아나톨리아
+    'M492,230 Q540,214 594,214 Q636,214 652,232 Q662,252 652,272 Q622,288 578,290 Q536,292 508,280 Q490,262 492,230 Z',
+    // 캅카스 (콜키스)
+    'M578,178 Q622,160 672,158 Q712,158 728,176 Q738,198 726,222 Q698,242 656,246 Q618,246 596,230 Q580,208 578,178 Z',
+    // 페르시아
+    'M658,286 Q700,272 742,276 Q762,282 762,306 L762,398 Q748,414 716,414 Q684,412 666,394 Q650,366 650,330 Q650,304 658,286 Z',
+    // 이집트·북아프리카
+    'M290,478 Q360,450 440,436 Q520,424 600,420 Q690,416 764,426 L764,498 L290,498 Z',
+  ];
+  let s = '';
+  for(const p of shapes) s += `<path d="${p}" ${glow}/><path d="${p}" ${land}/>`;
+  // 산맥
+  const mt = (x,y,w) => `<path d="M${x},${y} l${w},${-w*1.4} l${w},${w*1.4} Z" fill="#d3bd85" stroke="#a89060" stroke-width="1"/>`;
+  s += mt(282,180,7) + mt(296,174,6) + mt(270,184,5);                    // 알프스
+  s += mt(112,254,6) + mt(126,250,5) + mt(140,248,5);                    // 피레네
+  s += mt(612,196,7) + mt(630,190,8) + mt(650,188,7) + mt(668,192,6);    // 캅카스
+  s += mt(690,322,6) + mt(706,316,7) + mt(722,322,6);                    // 자그로스
+  // 강: 론(갈리아)·나일(이집트 델타)
+  s += `<path d="M236,142 Q230,184 218,226" stroke="#9dc0c4" stroke-width="2.5" fill="none" opacity=".9"/>`;
+  s += `<path d="M532,498 Q528,468 522,438 M522,438 Q514,430 506,428 M522,438 Q528,428 538,426" stroke="#9dc0c4" stroke-width="2.5" fill="none" opacity=".9"/>`;
+  // 숲
+  const tr = (x,y) => `<circle cx="${x}" cy="${y}" r="3.4" fill="#8aa86a"/><circle cx="${x+4}" cy="${y+2}" r="2.8" fill="#7a9a5a"/><rect x="${x-0.6}" y="${y+3}" width="1.2" height="3.4" fill="#7a5a3a"/>`;
+  s += tr(168,108) + tr(198,94) + tr(148,138) + tr(228,98) + tr(58,278) + tr(432,238) + tr(700,188);
+  // 사막 점묘
+  s += `<g fill="#d3bd85"><circle cx="380" cy="470" r="1.5"/><circle cx="420" cy="460" r="1.5"/><circle cx="470" cy="452" r="1.5"/><circle cx="600" cy="446" r="1.5"/><circle cx="650" cy="452" r="1.5"/><circle cx="710" cy="446" r="1.5"/></g>`;
+  return s;
+}
+function mapDoodads(){
   return `
-  <!-- 이베리아 -->
-  <path d="M18,252 Q60,232 122,240 Q152,252 148,282 Q142,330 100,352 Q50,348 28,320 Q12,285 18,252 Z" ${land}/>
-  <!-- 갈리아·게르마니아 -->
-  <path d="M112,92 Q200,58 300,70 Q330,90 322,140 Q305,185 268,208 Q230,232 168,224 Q128,210 118,165 Q106,125 112,92 Z" ${land}/>
-  <!-- 이탈리아 반도 -->
-  <path d="M300,222 Q322,218 336,238 Q348,262 358,286 Q374,312 388,330 Q396,348 386,360 Q370,356 356,338 Q338,314 326,290 Q310,262 298,246 Z" ${land}/>
-  <path d="M338,368 L366,362 L360,386 L336,384 Z" ${land}/>
-  <!-- 발칸·그리스 -->
-  <path d="M392,214 Q446,224 470,250 Q482,290 474,330 Q462,362 442,372 Q424,350 420,318 Q408,276 396,250 Z" ${land}/>
-  <!-- 아나톨리아 -->
-  <path d="M492,232 Q570,214 646,224 Q668,248 658,278 Q600,296 544,290 Q504,278 492,254 Z" ${land}/>
-  <!-- 캅카스 (콜키스) -->
-  <path d="M578,178 Q650,158 716,168 Q736,192 726,224 Q672,248 620,240 Q588,222 578,198 Z" ${land}/>
-  <!-- 페르시아 -->
-  <path d="M660,288 Q720,272 758,282 L762,408 Q716,420 676,406 Q650,368 652,324 Z" ${land}/>
-  <!-- 이집트·북아프리카 -->
-  <path d="M290,478 Q420,432 540,420 Q660,414 764,428 L764,498 L290,498 Z" ${land}/>
-  <path d="M508,424 Q522,408 536,424 Z" ${land}/>
-  `;
+  <g transform="translate(212,352)" opacity=".85">
+    <path d="M-14,6 Q0,14 14,6 L10,0 L-10,0 Z" fill="#8a5a3a" stroke="#5a3a22" stroke-width="1"/>
+    <line x1="0" y1="0" x2="0" y2="-18" stroke="#5a3a22" stroke-width="1.5"/>
+    <path d="M0,-18 Q11,-11 0,-4 Z" fill="#f2e6c8" stroke="#c9b890" stroke-width="1"/>
+    <path d="M-6,9 q3,-2.5 6,0 q3,2.5 6,0" stroke="#8fb4b8" stroke-width="1.2" fill="none"/>
+  </g>
+  <g transform="translate(58,442)" opacity=".92">
+    <circle r="15" fill="#f2e6c8" stroke="#a89060" stroke-width="1.5"/>
+    <path d="M0,-11 L2.5,-2.5 L11,0 L2.5,2.5 L0,11 L-2.5,2.5 L-11,0 L-2.5,-2.5 Z" fill="#a3323b" stroke="#722f37" stroke-width=".8"/>
+    <circle r="1.8" fill="#f2e6c8"/>
+    <text y="-19" text-anchor="middle" font-size="9" font-weight="800" fill="#6b5a3e">N</text>
+  </g>`;
 }
 function routeLines(){
   // 티어 순 항로 (장식)
@@ -571,20 +624,47 @@ function markerSVG(r){
   const fc = factionColor();
   let inner = '';
   if(rs.owned){
-    // 영토 글로우 + 포도밭 + 진영 깃발
-    inner += `<circle r="30" fill="${fc}" opacity=".18"/>`;
-    inner += `<circle r="13" fill="#f5ead3" stroke="${fc}" stroke-width="2.5"/>`;
-    // 포도송이 아이콘
-    inner += `<g transform="translate(0,1.5)">
+    // 영토 글로우 + 성벽 + 영지 미니 그래픽
+    inner += `<circle r="34" fill="${fc}" opacity=".13"/>`;
+    if(rs.b.wall) inner += `<circle r="31" fill="none" stroke="#8a7a5a" stroke-width="3.5" stroke-dasharray="5 3"/>`;
+    // 포도밭 플롯 (밭 개수만큼, 성장 단계별 표현)
+    const plotPos = [[-30,3],[-24,-15],[-13,14]];
+    rs.vineyards.forEach((v,i) => {
+      const [px,py] = plotPos[i] || plotPos[0];
+      let crop = '';
+      if(v.stage >= 3) crop = `<circle cx="-3" cy="-2" r="1.4" fill="#722f37"/><circle cx="2" cy="1" r="1.4" fill="#722f37"/><circle cx="-1" cy="3.6" r="1.4" fill="#722f37"/>`;
+      else if(v.stage >= 1) crop = `<circle cx="-3" cy="-2" r="1" fill="#5d7a4e"/><circle cx="2" cy="1" r="1" fill="#5d7a4e"/>`;
+      inner += `<g transform="translate(${px},${py})">
+        <rect x="-7" y="-5" width="14" height="10" rx="1.5" fill="#dbe4b4" stroke="#8a9a5e" stroke-width="1"/>
+        <path d="M-5,-2 H5 M-5,1 H5 M-5,4 H5" stroke="#95aa66" stroke-width="1"/>${crop}</g>`;
+    });
+    // 양조장 (집 + 통)
+    if(rs.b.winery) inner += `<g transform="translate(20,5)">
+      <rect x="-6" y="-3" width="12" height="9" fill="#c99a6a" stroke="#8a5a3a" stroke-width="1"/>
+      <path d="M-8,-3 L0,-10 L8,-3 Z" fill="#8a4a3a" stroke="#6a3a2a" stroke-width="1"/>
+      <circle cx="0" cy="2.5" r="2.6" fill="#8a5a3a" stroke="#5a3a22" stroke-width=".8"/>
+      <path d="M-2.6,2.5 H2.6" stroke="#5a3a22" stroke-width=".7"/></g>`;
+    // 시장 (차양 좌판)
+    if(rs.b.market) inner += `<g transform="translate(25,-13)">
+      <rect x="-6" y="-1" width="12" height="6" fill="#e8d9b8" stroke="#8a7a5a" stroke-width=".8"/>
+      <path d="M-7.5,-1 Q0,-8 7.5,-1 Z" fill="#c9524a" stroke="#8a3a34" stroke-width=".7"/>
+      <path d="M-4.4,-4.4 L-4.4,-1 M-1.5,-5.6 L-1.5,-1 M1.5,-5.6 L1.5,-1 M4.4,-4.4 L4.4,-1" stroke="#f5ead3" stroke-width="1.5"/></g>`;
+    // 셀라 (암포라/크베브리)
+    if(rs.b.cellar) inner += `<g transform="translate(-9,24)">
+      <path d="M-2.5,-4 Q-4.8,0 -2,4.4 Q0,6 2,4.4 Q4.8,0 2.5,-4 Z" fill="#c9884a" stroke="#8a5a3a" stroke-width="1"/>
+      <rect x="-3.2" y="-6" width="6.4" height="2.2" rx="1" fill="#8a5a3a"/>
+      <path d="M-1.6,-1 Q0,.5 1.6,-1" stroke="#8a5a3a" stroke-width=".7" fill="none"/></g>`;
+    // 중앙 문장 + 진영 깃발
+    inner += `<circle r="10" fill="#f5ead3" stroke="${fc}" stroke-width="2.5"/>`;
+    inner += `<g transform="translate(0,1) scale(.82)">
       <circle cx="-3" cy="-2" r="2.6" fill="#722f37"/><circle cx="3" cy="-2" r="2.6" fill="#722f37"/>
       <circle cx="0" cy="1.5" r="2.6" fill="#8e3a44"/><circle cx="-3" cy="4" r="2.4" fill="#722f37"/>
       <circle cx="3" cy="4" r="2.4" fill="#722f37"/><circle cx="0" cy="6.5" r="2.2" fill="#8e3a44"/>
       <path d="M0,-5 Q1,-9 4,-10" stroke="#5d7a4e" stroke-width="1.6" fill="none"/>
       <ellipse cx="5" cy="-9" rx="3" ry="1.8" fill="#5d7a4e" transform="rotate(-20 5 -9)"/></g>`;
-    // 깃발
-    inner += `<g class="flagpop" transform="translate(9,-24)">
-      <line x1="0" y1="0" x2="0" y2="22" stroke="#6b5a3e" stroke-width="2"/>
-      <path d="M0,1 L14,5 L0,10 Z" fill="${fc}" stroke="#5a2020" stroke-width=".8"/></g>`;
+    inner += `<g class="flagpop" transform="translate(7,-27)">
+      <line x1="0" y1="0" x2="0" y2="18" stroke="#6b5a3e" stroke-width="2"/>
+      <path d="M0,0 L13,4 L0,9 Z" fill="${fc}" stroke="#5a2020" stroke-width=".8"/></g>`;
   } else if(locked){
     inner += `<circle r="11" fill="#d8cdb2" stroke="#9a8a68" stroke-width="2"/>`;
     inner += `<rect x="-4" y="-3" width="8" height="7" rx="1.5" fill="#8a7a5a"/><path d="M-2.5,-3 V-6 a2.5,2.5 0 0 1 5,0 V-3" stroke="#8a7a5a" stroke-width="1.8" fill="none"/>`;
@@ -594,8 +674,8 @@ function markerSVG(r){
     inner += `<circle r="12" fill="#fdf3e0" stroke="#a3323b" stroke-width="2.5"/>`;
     inner += `<path d="M-7,5 L-7,-3 L-4,-3 L-4,-6 L-1.5,-6 L-1.5,-3 L1.5,-3 L1.5,-6 L4,-6 L4,-3 L7,-3 L7,5 Z" fill="#8a6a4a"/>`;
   }
-  const label = `<text class="rname" y="${rs.owned ? 34 : 30}">${r.name}</text>
-    <text class="rtier" y="${rs.owned ? 45 : 41}">${TIER_NAMES[r.tier]}${!rs.owned && !locked ? ' · 정복 가능' : ''}</text>`;
+  const label = `<text class="rname" y="${rs.owned ? 45 : 30}">${r.name}</text>
+    <text class="rtier" y="${rs.owned ? 56 : 41}">${TIER_NAMES[r.tier]}${!rs.owned && !locked ? ' · 정복 가능' : ''}</text>`;
   const selRing = selRegion === r.id ? `<circle r="18" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="5 4"/>` : '';
   return `<g class="marker ${locked?'locked':''} ${justWonId===r.id?'justwon':''}" transform="translate(${r.pos.x},${r.pos.y})" onclick="selectRegion('${r.id}')">
     ${selRing}${inner}${label}</g>`;
@@ -624,8 +704,9 @@ function renderMap(){
       <path d="M560,340 q10,-6 20,0 q10,6 20,0"/><path d="M120,420 q10,-6 20,0 q10,6 20,0"/>
     </g>
     ${landPaths()}
-    <text x="300" y="395" font-size="20" font-style="italic" font-weight="700" fill="#6f9296" opacity=".8" letter-spacing="6">MARE NOSTRUM</text>
-    <text x="640" y="130" font-size="12" font-style="italic" fill="#8a7a5a" opacity=".8">CAUCASUS</text>
+    <text x="300" y="398" font-size="20" font-style="italic" font-weight="700" fill="#6f9296" opacity=".8" letter-spacing="6">MARE NOSTRUM</text>
+    <text x="632" y="132" font-size="12" font-style="italic" fill="#8a7a5a" opacity=".8">CAUCASUS</text>
+    ${mapDoodads()}
     ${routeLines()}
     ${REGIONS.map(markerSVG).join('')}
     ${charM}
@@ -873,7 +954,64 @@ function renderDetail(){
   }
   el.innerHTML = html;
 }
-function renderAll(){ renderPlayer(); renderRes(); renderSeason(); renderMap(); renderDetail(); }
+// ---------- 길잡이 (다음 행동 제안) ----------
+function adviseNext(){
+  const owned = REGIONS.filter(r => S.regions[r.id].owned);
+  // 1. 익은 포도
+  for(const r of owned){
+    if(S.regions[r.id].vineyards.some(v => v.stage >= 3))
+      return {msg:`${r.name}의 포도가 익었다 — 수확하자!`, target:r.id};
+  }
+  // 2. 원정 준비 완료
+  const gate = maxOwnedTier() + 1;
+  const targets = REGIONS.filter(r => !S.regions[r.id].owned && r.tier <= gate).sort((a,b) => a.tier - b.tier);
+  if(targets.length){
+    const t = targets[0];
+    if(S.supplies >= t.tier * 10 && S.wine >= t.tier)
+      return {msg:`원정 준비 완료! ${t.name}(${TIER_NAMES[t.tier]})을 정복하러 가자.`, target:t.id};
+  }
+  // 3. 양조
+  const wineryR = owned.find(r => S.regions[r.id].b.winery);
+  if(S.grapes >= 2 && wineryR)
+    return {msg:`포도 ${S.grapes}송이 보유 — ${wineryR.name} 양조장에서 와인을 빚자.`, target:wineryR.id};
+  if(S.grapes >= 2 && !wineryR && owned.length)
+    return {msg:`포도는 있는데 양조장이 없다 — ${owned[0].name}에 양조장(${buildCost(60)}G)을 짓자.`, target:owned[0].id};
+  // 4. 좋은 시세에 판매
+  const mkts = owned.filter(r => S.regions[r.id].b.market);
+  if(S.wine > 0 && mkts.length){
+    const best = mkts.reduce((a,b) => sellPrice(a) >= sellPrice(b) ? a : b);
+    if((S.merchantDeal && S.merchantDeal.type === 'sellx2') || S.regions[best.id].price >= basePrice(best) * 1.1)
+      return {msg:`${best.name} 와인 시세가 좋다(${sellPrice(best)}G) — 지금 팔자!`, target:best.id};
+  }
+  // 5. 다음 원정까지 모자란 것
+  if(targets.length){
+    const t = targets[0], need = [];
+    if(S.supplies < t.tier * 10) need.push(`물자 ${t.tier * 10 - S.supplies}`);
+    if(S.wine < t.tier) need.push(`와인 ${t.tier - S.wine}병`);
+    if(need.length)
+      return {msg:`다음 목표는 ${t.name} — ${need.join('과 ')}만 더 모으면 원정할 수 있다.`, target:t.id};
+  }
+  // 6. 개간·씨앗
+  for(const r of owned){
+    if(S.regions[r.id].vineyards.length < 3 && S.seeds >= 1 && S.gold >= buildCost(20))
+      return {msg:`${r.name}에 빈 밭 자리가 있다 — 개간해서 생산을 늘리자.`, target:r.id};
+  }
+  if(S.seeds < 1 && mkts.length && S.gold >= seedCost())
+    return {msg:`포도씨가 떨어졌다 — ${mkts[0].name} 시장에서 사두자.`, target:mkts[0].id};
+  // 7. 기본: 시간 진행
+  return {msg:'할 일은 끝났다 — 「다음 계절」로 시간을 흘려 포도를 키우자. (클릭)', target:null};
+}
+function renderHint(){
+  const el = document.getElementById('hintbar');
+  if(!S || !S.char){ el.classList.add('hidden'); return; }
+  const h = adviseNext();
+  el.classList.remove('hidden');
+  el.innerHTML = `<span class="tag">길잡이</span><span>${h.msg}</span>`;
+  el.onclick = h.target
+    ? () => selectRegion(h.target)
+    : () => { nextSeason(); save(); };
+}
+function renderAll(){ renderPlayer(); renderRes(); renderSeason(); renderHint(); renderMap(); renderDetail(); }
 
 // ---------- 행동 ----------
 function selectRegion(id){
@@ -893,7 +1031,11 @@ function plantVine(id){
   if(S.seeds < 1 || S.gold < c) return;
   S.seeds--; S.gold -= c;
   S.regions[id].vineyards.push({stage:0});
-  log(`${nameOf(id)}에 포도씨를 심었다. 정성껏 돌보자.`);
+  log(pick([
+    `${nameOf(id)}에 포도씨를 심었다. 정성껏 돌보자.`,
+    `${nameOf(id)}의 흙을 일궈 씨를 묻었다. 봄비만 기다린다.`,
+    `${nameOf(id)} 언덕에 새 밭이 생겼다. 첫 싹이 기대된다.`,
+  ]));
   sfx('plant'); renderAll();
 }
 function harvest(id, i){
@@ -901,7 +1043,11 @@ function harvest(id, i){
   if(v.stage < 3) return;
   const y = isGeorgia() ? 4 : 3;
   S.grapes += y; v.stage = 1;
-  log(`${nameOf(id)} 밭에서 포도 ${y}송이를 수확했다.`, 'good');
+  log(pick([
+    `${nameOf(id)} 밭에서 포도 ${y}송이를 수확했다.`,
+    `${nameOf(id)}의 포도가 알알이 영글었다 — ${y}송이 수확!`,
+    `수확 바구니 가득! ${nameOf(id)}에서 포도 ${y}송이.`,
+  ]), 'good');
   sfx('coin'); renderAll();
 }
 function build(id, key, g, sup){
@@ -914,14 +1060,20 @@ function build(id, key, g, sup){
 function makeWine(){
   if(S.grapes < 2) return;
   S.grapes -= 2; S.wine += 1;
-  log('포도 2 → 와인 1병을 빚었다.' + (isGeorgia() ? ' 크베브리 속에서 향이 깊어진다.' : ''));
+  log(pick(isGeorgia()
+    ? ['포도 2 → 와인 1병. 크베브리 속에서 향이 깊어진다.', '크베브리에 포도를 채웠다 — 와인 1병 완성.', '땅속 항아리가 일을 한다. 와인 1병 획득.']
+    : ['포도 2 → 와인 1병을 빚었다.', '압착기가 돌아간다 — 와인 1병 완성.', '오늘의 머스트가 와인 1병이 되었다.']));
   sfx('pour'); renderAll();
 }
 function makeWineAll(){
   const n = Math.floor(S.grapes / 2);
   if(n < 1) return;
   S.grapes -= n * 2; S.wine += n;
-  log(`포도 ${n*2} → 와인 ${n}병을 빚었다.`);
+  log(pick([
+    `포도 ${n*2} → 와인 ${n}병을 빚었다.`,
+    `양조장이 밤새 돌아갔다 — 와인 ${n}병 완성!`,
+    `셀러에 와인 ${n}병이 새로 쌓였다.`,
+  ]));
   sfx('pour'); renderAll();
 }
 function sellWine(id, n){
@@ -929,7 +1081,11 @@ function sellWine(id, n){
   if(n < 1) return;
   const p = sellPrice(REGIONS.find(x => x.id === id));
   S.wine -= n; S.gold += p * n;
-  log(`${nameOf(id)} 시장에서 와인 ${n}병을 ${p*n}G에 팔았다.`, 'good');
+  log(pick([
+    `${nameOf(id)} 시장에서 와인 ${n}병을 ${p*n}G에 팔았다.`,
+    `${nameOf(id)}의 상인들이 와인 ${n}병을 ${p*n}G에 사갔다.`,
+    `거래 성사! 와인 ${n}병 → ${p*n}G (${nameOf(id)}).`,
+  ]), 'good');
   sfx('coin'); renderAll();
 }
 function buySupplies(){
