@@ -1,0 +1,1375 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>VINUM IMPERIUM — 포도주 정복기</title>
+<style>
+:root{
+  --parch:#f5ead3; --parch2:#efe0bf; --ink:#3b2f22; --wine:#722f37; --wine2:#8e3a44;
+  --gold:#c9a227; --leaf:#5d7a4e; --card:#fffaf0; --shadow:rgba(59,47,34,.18);
+  --rome:#a3323b; --georgia:#b8862d;
+}
+*{box-sizing:border-box; margin:0; padding:0;}
+body{
+  font-family:'Segoe UI','Malgun Gothic',sans-serif; background:linear-gradient(#d8c9a3,#c9b68c);
+  color:var(--ink); min-height:100vh;
+}
+#app{max-width:1160px; margin:0 auto; padding:12px;}
+header{
+  display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
+  background:var(--wine); color:#f7ecd8; border-radius:14px; padding:8px 18px;
+  box-shadow:0 4px 0 var(--shadow);
+}
+header h1{font-size:19px; letter-spacing:1px;}
+header h1 small{font-size:12px; opacity:.8; font-weight:400; margin-left:8px;}
+#playerbox{display:flex; align-items:center; gap:8px; font-weight:700; font-size:14px;}
+#playerbox svg{background:#f7ecd8; border-radius:50%; border:2px solid var(--gold);}
+#seasonbox{display:flex; gap:10px; align-items:center; font-weight:700;}
+button{
+  font-family:inherit; border:none; border-radius:10px; padding:7px 14px; cursor:pointer;
+  background:var(--gold); color:#3b2f22; font-weight:700; box-shadow:0 3px 0 rgba(0,0,0,.25);
+  transition:transform .06s;
+}
+button:hover{transform:translateY(-1px);}
+button:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,.25);}
+button:disabled{opacity:.45; cursor:not-allowed; transform:none;}
+button.small{padding:4px 9px; font-size:12px; border-radius:8px;}
+button.wine{background:var(--wine2); color:#fff;}
+button.leaf{background:var(--leaf); color:#fff;}
+#resbar{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;}
+.res{
+  background:var(--card); border-radius:12px; padding:6px 14px; font-weight:700; font-size:14px;
+  box-shadow:0 3px 0 var(--shadow); display:flex; gap:6px; align-items:center;
+}
+.res span.v{color:var(--wine);}
+main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
+@media(max-width:900px){main{grid-template-columns:1fr;}}
+#mapwrap{
+  background:var(--parch); border-radius:16px; padding:8px; box-shadow:0 4px 0 var(--shadow);
+}
+#worldmap{width:100%; height:auto; display:block; border-radius:10px;}
+.marker{cursor:pointer;}
+.marker text.rname{
+  font-size:13px; font-weight:800; fill:#3b2f22; text-anchor:middle;
+  paint-order:stroke; stroke:#f5ead3; stroke-width:3px;
+}
+.marker text.rtier{font-size:8.5px; font-weight:700; fill:#6b5a3e; text-anchor:middle;}
+.marker.locked{opacity:.5;}
+.pulsering{animation:pulse 1.6s infinite;}
+@keyframes pulse{
+  0%{r:14; opacity:.8;} 70%{r:26; opacity:0;} 100%{r:26; opacity:0;}
+}
+.justwon .flagpop{animation:flagpop .9s ease-out;}
+@keyframes flagpop{
+  0%{transform:scale(0) rotate(-30deg);} 60%{transform:scale(1.5) rotate(8deg);} 100%{transform:scale(1);}
+}
+#charmarker{pointer-events:none;}
+#detail{
+  background:var(--parch2); border-radius:16px; padding:14px; box-shadow:0 4px 0 var(--shadow);
+  align-self:start; position:sticky; top:10px; max-height:calc(100vh - 20px); overflow-y:auto;
+}
+#detail h2{font-size:17px; color:var(--wine); margin-bottom:2px;}
+#detail .sub{font-size:12px; opacity:.75; margin-bottom:10px;}
+.dsec{background:var(--card); border-radius:10px; padding:8px 10px; margin-bottom:8px; font-size:13px;}
+.dsec h4{font-size:12px; color:var(--wine); margin-bottom:5px; text-transform:uppercase; letter-spacing:1px;}
+.dsec .row{display:flex; justify-content:space-between; align-items:center; margin:4px 0; gap:6px; flex-wrap:wrap;}
+#log{
+  margin-top:12px; background:#fffef8; border:3px solid var(--wine); border-radius:16px;
+  padding:10px 16px; height:120px; overflow-y:auto; font-size:13px; line-height:1.55;
+  box-shadow:0 4px 0 var(--shadow);
+}
+#log .ll{margin-bottom:3px;}
+#log .ll b{color:var(--wine);}
+#log .ll.evt{color:#8e3a44; font-weight:700;}
+#log .ll.good{color:#4a6b3a; font-weight:700;}
+.modalbg{
+  position:fixed; inset:0; background:rgba(40,25,15,.65); display:flex; align-items:center;
+  justify-content:center; z-index:50; padding:14px;
+}
+.modal{
+  background:var(--parch); border-radius:18px; padding:22px; max-width:620px; width:100%;
+  box-shadow:0 10px 40px rgba(0,0,0,.4); max-height:92vh; overflow-y:auto;
+}
+.modal h2{color:var(--wine); margin-bottom:8px;}
+.choice{
+  display:block; width:100%; text-align:left; background:var(--card); color:var(--ink);
+  margin:6px 0; padding:10px 14px; border-radius:10px; font-weight:600; font-size:14px;
+}
+.choice.correct{background:#cfe6b8; border:2px solid var(--leaf);}
+.choice.wrongpick{background:#f2c4c4; border:2px solid var(--wine2);}
+#sandwrap{background:#e8dcc0; border-radius:8px; height:14px; margin:10px 0; overflow:hidden; position:relative;}
+#sandbar{height:100%; background:linear-gradient(90deg,#d9b23c,#c9a227); width:100%; transition:width .2s linear;}
+#sandlabel{position:absolute; inset:0; font-size:10px; text-align:center; line-height:14px; font-weight:800; color:#5c4a1e;}
+.qmeta{display:flex; justify-content:space-between; align-items:center; font-size:12px; font-weight:700; color:var(--wine); margin-bottom:6px;}
+.exp{background:#fdf6e3; border-left:4px solid var(--gold); padding:8px 10px; font-size:13px; margin-top:8px; border-radius:6px;}
+.factioncard{
+  background:var(--card); border-radius:14px; padding:14px; margin:8px 0; cursor:pointer;
+  border:3px solid transparent;
+}
+.factioncard:hover{border-color:var(--gold);}
+.factioncard h3{color:var(--wine);}
+.factioncard ul{margin:6px 0 0 18px; font-size:13px;}
+.pricetag{font-size:12px; font-weight:800; color:#7a5a10;}
+.centerbtns{display:flex; gap:8px; justify-content:center; margin-top:14px; flex-wrap:wrap;}
+#endmodal h2{font-size:26px;}
+.vinerow{font-size:18px; letter-spacing:3px;}
+.hidden{display:none !important;}
+/* 캐릭터 생성 */
+#namein{
+  width:100%; padding:10px 12px; font-size:15px; font-weight:700; border-radius:10px;
+  border:2px solid var(--gold); background:var(--card); color:var(--ink); font-family:inherit;
+  margin-bottom:12px;
+}
+.chargrid{display:grid; grid-template-columns:repeat(5,1fr); gap:8px; margin-bottom:6px;}
+@media(max-width:560px){.chargrid{grid-template-columns:repeat(3,1fr);}}
+.charcell{
+  background:var(--card); border-radius:12px; padding:6px 4px 2px; cursor:pointer; text-align:center;
+  border:3px solid transparent;
+}
+.charcell:hover{border-color:var(--gold);}
+.charcell.sel{border-color:var(--wine); background:#fdeede;}
+.charcell .cname{font-size:10px; font-weight:700; opacity:.75;}
+.grouplabel{font-size:12px; font-weight:800; color:var(--wine); margin:10px 0 4px; letter-spacing:1px;}
+#qavatar svg{background:#fff; border-radius:50%; border:2px solid var(--gold); vertical-align:middle;}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <h1>VINUM IMPERIUM<small>포도주 정복기</small></h1>
+    <div id="playerbox"></div>
+    <div id="seasonbox">
+      <span id="seasonlabel">1년차 봄</span>
+      <button id="nextseason" class="leaf">다음 계절 ▸</button>
+      <button id="musicbtn" class="small">♪ 음악 켜기</button>
+    </div>
+  </header>
+
+  <div id="resbar"></div>
+
+  <main>
+    <section id="mapwrap"></section>
+    <aside id="detail"></aside>
+  </main>
+
+  <div id="log"></div>
+</div>
+
+<!-- 시작 1: 진영 선택 -->
+<div class="modalbg" id="startmodal">
+  <div class="modal">
+    <h2>VINUM IMPERIUM — 포도주 정복기</h2>
+    <p style="font-size:13px; margin-bottom:10px;">
+      포도씨 한 줌으로 세계를 정복하라. 포도밭을 일구고, 양조하고, 교역하고,
+      와인 지식 대결(WSET L1 → MW)로 지역을 복속시켜라.
+      지진과 전쟁, 떼먹히는 대금을 견디며 10개 지역을 모두 손에 넣으면 승리.
+    </p>
+    <div class="factioncard" onclick="pickFaction('georgia')">
+      <h3>조지아 (콜키스)</h3>
+      <ul>
+        <li>8000년 와인의 요람 — 수확량 +1, 크베브리 전통으로 와인 판매가 +20%</li>
+        <li>시작 지역: 콜키스</li>
+      </ul>
+    </div>
+    <div class="factioncard" onclick="pickFaction('rome')">
+      <h3>로마 (라티움)</h3>
+      <ul>
+        <li>제국의 공학 — 모든 건설 비용 -30%, 성벽 있으면 전쟁 자동 방어</li>
+        <li>시작 지역: 라티움</li>
+      </ul>
+    </div>
+    <p style="font-size:12px; opacity:.7;">
+      퀴즈에서 모르는 문제는 「정답 확인하기」로 넘어갈 수 있지만 물자가 사라진다.
+      모래시계(시간의 모래)가 다 떨어지면 오답 처리.
+    </p>
+  </div>
+</div>
+
+<!-- 시작 2: 캐릭터 생성 -->
+<div class="modalbg hidden" id="charmodal">
+  <div class="modal">
+    <h2 id="chartitle">개척자를 만들자</h2>
+    <p style="font-size:13px; margin-bottom:10px;">이름을 짓고, 전통 복장을 갖춘 개척자를 골라라. 이 인물이 지도 위에서 그대의 정복을 이끈다.</p>
+    <input id="namein" maxlength="12" placeholder="개척자의 이름 (예: 밝음, Marcus, Nino...)">
+    <div class="grouplabel" id="glf"></div>
+    <div class="chargrid" id="gridf"></div>
+    <div class="grouplabel" id="glm"></div>
+    <div class="chargrid" id="gridm"></div>
+    <div class="centerbtns">
+      <button class="small" onclick="backToFaction()">◂ 진영 다시 선택</button>
+      <button class="wine" id="charokbtn" onclick="confirmChar()" disabled>이 모습으로 출정한다 ▸</button>
+    </div>
+  </div>
+</div>
+
+<!-- 퀴즈 모달 -->
+<div class="modalbg hidden" id="quizmodal">
+  <div class="modal">
+    <div class="qmeta"><span id="qavatar"></span><span id="qtier"></span><span id="qprogress"></span></div>
+    <div id="sandwrap"><div id="sandbar"></div><div id="sandlabel">시간의 모래</div></div>
+    <h2 id="qtext" style="font-size:17px;"></h2>
+    <div id="qchoices"></div>
+    <div id="qexp" class="exp hidden"></div>
+    <div class="centerbtns">
+      <button id="revealbtn" class="wine"></button>
+      <button id="qnextbtn" class="leaf hidden">다음 ▸</button>
+    </div>
+  </div>
+</div>
+
+<!-- 엔딩 모달 -->
+<div class="modalbg hidden" id="endmodal">
+  <div class="modal" style="text-align:center;">
+    <h2 id="endtitle"></h2>
+    <div id="endchar"></div>
+    <div class="vinerow" id="endvines"></div>
+    <p id="endtext" style="margin:12px 0; font-size:14px;"></p>
+    <button onclick="localStorage.removeItem('vinum_save'); location.reload()" class="wine">새 게임</button>
+  </div>
+</div>
+
+<script>
+'use strict';
+/* =========================================================
+   VINUM IMPERIUM — 포도주 정복기 v2
+   지도 비주얼 정복 + 캐릭터 생성(진영별 전통복장 여5/남5)
+   ========================================================= */
+
+// ---------- 데이터: 지역 (pos = 지도 좌표) ----------
+const REGIONS = [
+  {id:'colchis',  name:'콜키스',            sub:'조지아 — 와인의 요람, 크베브리의 땅', tier:1, priceMod:1.0,  pos:{x:625,y:205}},
+  {id:'hellas',   name:'헬라스',            sub:'그리스 — 심포지온과 암포라',          tier:1, priceMod:1.05, pos:{x:448,y:330}},
+  {id:'latium',   name:'라티움',            sub:'로마 — 제국의 심장',                  tier:2, priceMod:1.15, pos:{x:325,y:288}},
+  {id:'campania', name:'캄파니아',          sub:'전설의 팔레르눔 와인',                tier:2, priceMod:1.2,  pos:{x:362,y:328}},
+  {id:'gallia',   name:'갈리아 나르보넨시스', sub:'남프랑스 — 태양의 포도밭',          tier:3, priceMod:1.35, pos:{x:212,y:242}},
+  {id:'burdigala',name:'부르디갈라',        sub:'보르도 — 강과 항구의 도시',           tier:3, priceMod:1.4,  pos:{x:143,y:198}},
+  {id:'hispania', name:'히스파니아',        sub:'리오하 — 이베리아의 붉은 땅',         tier:4, priceMod:1.55, pos:{x:92,y:292}},
+  {id:'germania', name:'게르마니아',        sub:'모젤 — 가파른 강변의 리슬링',         tier:4, priceMod:1.6,  pos:{x:258,y:130}},
+  {id:'persia',   name:'페르시아',          sub:'시라즈 — 전설의 궁정 와인',           tier:5, priceMod:1.8,  pos:{x:695,y:330}},
+  {id:'aegyptus', name:'아이깁투스',        sub:'알렉산드리아 — 나일의 황금 교역로',   tier:5, priceMod:1.85, pos:{x:520,y:428}},
+];
+const TIER_NAMES = {1:'WSET L1', 2:'WSET L2', 3:'WSET L3', 4:'Diploma', 5:'Master of Wine'};
+const FACTION_NAMES = {rome:'로마', georgia:'조지아'};
+
+// ---------- 데이터: 퀴즈 (5단계 × 15문항) ----------
+const QUIZ = {
+1:[
+ {q:'샤르도네(Chardonnay)는 어떤 색의 포도 품종인가?', c:['적포도','청포도','로제 전용 포도','건포도'], a:1, e:'샤르도네는 대표적인 청포도(white grape) 품종이다.'},
+ {q:'스파클링 와인으로 가장 유명한 프랑스 지역은?', c:['보르도','부르고뉴','샹파뉴','루아르'], a:2, e:'샹파뉴(Champagne)는 전통 방식 스파클링 와인의 본고장.'},
+ {q:'레드 와인의 붉은 색은 주로 어디에서 오는가?', c:['포도 과육','포도 껍질','포도 씨','오크통'], a:1, e:'색소(안토시아닌)는 껍질에 있다. 대부분 품종의 과육은 무색.'},
+ {q:'와인의 알코올은 무엇이 발효되어 만들어지는가?', c:['포도의 당분','포도의 산','물','타닌'], a:0, e:'효모가 포도의 당분을 알코올과 이산화탄소로 바꾼다.'},
+ {q:'풀바디 레드 와인의 일반적인 서빙 온도는?', c:['4~6°C','8~10°C','15~18°C','24~26°C'], a:2, e:'레드는 실온보다 약간 낮은 15~18°C가 표준.'},
+ {q:'카베르네 소비뇽(Cabernet Sauvignon)은?', c:['청포도','적포도','교잡 청포도','포도가 아니다'], a:1, e:'세계에서 가장 널리 재배되는 적포도 품종 중 하나.'},
+ {q:'"드라이(dry)" 와인이란?', c:['도수가 높은 와인','단맛이 거의 없는 와인','타닌이 강한 와인','오래된 와인'], a:1, e:'드라이 = 잔당이 거의 없어 달지 않은 와인.'},
+ {q:'떫은 느낌을 주는 타닌이 가장 두드러지는 와인은?', c:['레드 와인','화이트 와인','로제 와인','스파클링 와인'], a:0, e:'타닌은 껍질·씨에서 오므로 침용을 거친 레드에서 강하다.'},
+ {q:'소비뇽 블랑으로 유명한 프랑스 루아르의 마을은?', c:['샤블리','상세르','에르미타주','마고'], a:1, e:'상세르(Sancerre)는 루아르 소비뇽 블랑의 대표 산지.'},
+ {q:'기름진 생선 요리에 고전적으로 어울리는 와인은?', c:['타닌 강한 레드','산도 높은 화이트','스위트 레드','포트'], a:1, e:'높은 산도가 기름진 맛을 씻어내 균형을 잡아준다.'},
+ {q:'로제 와인의 연분홍색은 보통 어떻게 얻는가?', c:['레드+화이트 혼합이 일반적','껍질을 짧게 접촉','색소 첨가','오크 숙성'], a:1, e:'적포도 껍질을 짧게 침용해 연한 색만 추출한다.'},
+ {q:'귀부 스위트 와인으로 유명한 보르도의 산지는?', c:['소테른','포이약','생테밀리옹','앙트르되메르'], a:0, e:'소테른(Sauternes)은 세계적인 귀부 스위트 와인 산지.'},
+ {q:'코르크 마개 와인을 눕혀 보관하는 이유는?', c:['라벨 보호','코르크가 마르지 않게','침전물 제거','색 보존'], a:1, e:'코르크가 마르면 수축해 공기가 유입되어 산화된다.'},
+ {q:'피노 누아(Pinot Noir)의 본고장은?', c:['보르도','부르고뉴','알자스','프로방스'], a:1, e:'피노 누아는 부르고뉴의 대표 적포도 품종.'},
+ {q:'포트(Port) 와인의 생산 국가는?', c:['스페인','이탈리아','포르투갈','그리스'], a:2, e:'포트는 포르투갈 도우로 밸리의 주정강화 와인.'},
+],
+2:[
+ {q:'샤블리(Chablis)에 사용되는 품종은?', c:['소비뇽 블랑','샤르도네','리슬링','알리고테'], a:1, e:'샤블리는 100% 샤르도네. 서늘한 기후의 미네랄리티가 특징.'},
+ {q:'리오하(Rioja) 레드의 주 품종은?', c:['가르나차','템프라니요','모나스트렐','멘시아'], a:1, e:'템프라니요가 리오하 블렌드의 중심 품종.'},
+ {q:'새 오크통 숙성이 와인에 주는 대표적 풍미는?', c:['레몬·풋사과','바닐라·토스트','버섯·젖은 낙엽','장미·리치'], a:1, e:'오크 유래 바닐린과 토스팅 풍미가 입혀진다.'},
+ {q:'보졸레(Beaujolais)의 품종은?', c:['가메','피노 누아','시라','카리냥'], a:0, e:'보졸레는 가메(Gamay) 100%가 기본.'},
+ {q:'키안티(Chianti)의 주 품종은?', c:['네비올로','바르베라','산지오베제','코르비나'], a:2, e:'키안티는 산지오베제 중심의 토스카나 와인.'},
+ {q:'뉴질랜드 말보로(Marlborough)를 세계에 알린 품종은?', c:['샤르도네','소비뇽 블랑','피노 그리','리슬링'], a:1, e:'패션프루트·구스베리 풍미의 소비뇽 블랑이 대표.'},
+ {q:'샴페인 전통 방식에서 2차 발효가 일어나는 곳은?', c:['스테인리스 탱크','오크통','병 속','콘크리트 에그'], a:2, e:'병내 2차 발효(méthode traditionnelle)가 기포를 만든다.'},
+ {q:'호주 바로사 밸리(Barossa Valley)의 대표 품종은?', c:['피노 누아','쉬라즈','말벡','진판델'], a:1, e:'바로사는 진하고 농축된 쉬라즈로 유명하다.'},
+ {q:'서늘한 기후에서 자란 포도로 만든 와인의 일반적 특징은?', c:['높은 산도, 가벼운 바디','낮은 산도, 높은 알코올','강한 타닌','높은 잔당'], a:0, e:'서늘할수록 산이 보존되고 당(→알코올)이 낮다.'},
+ {q:'귀부균(Botrytis cinerea)이 만들어내는 와인 스타일은?', c:['드라이 화이트','스위트 화이트','스파클링','주정강화 레드'], a:1, e:'수분을 빼앗아 당·풍미를 농축시킨다. 소테른·토카이가 대표.'},
+ {q:'아르헨티나를 대표하는 적포도 품종은?', c:['카르메네르','말벡','타낫','보나르다'], a:1, e:'말벡은 멘도사 고지대에서 꽃을 피웠다. (카르메네르는 칠레)'},
+ {q:'부르고뉴에서 "그랑 크뤼(Grand Cru)"란?', c:['최고 등급의 포도밭','가장 큰 양조장','오래된 빈티지','네고시앙 등급'], a:0, e:'부르고뉴 등급은 밭(climat) 기준. 그랑 크뤼가 최상위.'},
+ {q:'피노 그리지오(Pinot Grigio)에 대한 옳은 설명은?', c:['이탈리아에서 널리 재배되는 청포도 계열','적포도로 레드만 생산','포르투갈 품종','교잡종'], a:0, e:'피노 그리의 이탈리아식 이름. 껍질은 회분홍빛이지만 화이트로 양조.'},
+ {q:'스텔렌보시(Stellenbosch)는 어느 나라의 와인 산지인가?', c:['호주','남아프리카공화국','칠레','미국'], a:1, e:'남아공 웨스턴케이프의 핵심 산지.'},
+ {q:'독일 모젤(Mosel)의 대표 품종은?', c:['게뷔르츠트라미너','뮐러투르가우','리슬링','실바너'], a:2, e:'가파른 점판암 경사면의 리슬링이 모젤의 상징.'},
+],
+3:[
+ {q:'말로락틱 전환(MLF)의 핵심은?', c:['당→알코올','사과산→젖산','젖산→초산','주석산 침전'], a:1, e:'날카로운 사과산이 부드러운 젖산으로. 부산물 디아세틸이 버터 풍미를 준다.'},
+ {q:'논빈티지 샴페인의 최소 숙성 기간(티라주 후)은?', c:['9개월','12개월','15개월','36개월'], a:2, e:'최소 15개월(효모 접촉 12개월 포함). 빈티지는 36개월.'},
+ {q:'콩드리외(Condrieu)의 품종은?', c:['마르산','루산','비오니에','클레레트'], a:2, e:'북론 콩드리외는 비오니에 100%. 살구·꽃향의 풀바디 화이트.'},
+ {q:'바롤로(Barolo)의 품종은?', c:['바르베라','돌체토','네비올로','브라케토'], a:2, e:'네비올로 100%. 높은 산도·타닌, 타르와 장미 향.'},
+ {q:'캐노피 매니지먼트의 주된 목적은?', c:['수확량 극대화만','일조량·통풍 조절로 품질 관리','토양 산도 조절','서리 방지만'], a:1, e:'잎·신초를 관리해 햇빛 노출과 통풍을 최적화, 병해도 줄인다.'},
+ {q:'카보닉 매서레이션(carbonic maceration)의 특징은?', c:['씨를 분리해 발효','온전한 포도송이의 세포 내 발효','산소 접촉 극대화','저온 장기 침용'], a:1, e:'CO2 환경에서 포도알 내부 효소 발효. 바나나·풍선껌 향, 보졸레 누보의 기법.'},
+ {q:'샤토네프뒤파프 레드 블렌드의 중심 품종은?', c:['시라','무르베드르','그르나슈','생소'], a:2, e:'그르나슈가 블렌드의 뼈대. 남론의 태양을 담은 품종.'},
+ {q:'아이스와인(Icewine/Eiswein)의 양조 핵심은?', c:['냉동고에서 인공 동결','언 포도를 수확·압착해 얼음(수분)을 분리','귀부균 감염','가당'], a:1, e:'자연 동결된 포도를 압착하면 농축된 즙만 나온다. 인공 동결은 불가.'},
+ {q:'푸이 퓌메(Pouilly-Fumé)의 품종은?', c:['샤르도네','슈냉 블랑','소비뇽 블랑','믈롱 드 부르고뉴'], a:2, e:'루아르 상류의 소비뇽 블랑. 부싯돌(fumé) 뉘앙스로 유명. (푸이 퓌세는 샤르도네)'},
+ {q:'리아스 바이샤스(Rías Baixas)의 대표 품종은?', c:['베르데호','알바리뇨','고델로','트레샤두라'], a:1, e:'스페인 갈리시아의 해안 산지. 짭짤한 산미의 알바리뇨.'},
+ {q:'솔레라(Solera) 시스템은 무엇을 위한 것인가?', c:['빈티지 표기','여러 해 와인의 분획 블렌딩으로 일관성 유지','탄산 주입','저온 발효'], a:1, e:'셰리의 단계적 블렌딩·숙성 시스템. 오래된 통에서 병입분만 뽑고 젊은 와인으로 채운다.'},
+ {q:'아마로네(Amarone della Valpolicella)의 핵심 기법은?', c:['늦수확','포도 건조(아파시멘토) 후 발효','주정강화','귀부'], a:1, e:'수확한 포도를 말려 당을 농축한 뒤 드라이하게 발효. 높은 알코올과 농축미.'},
+ {q:'부르고뉴 등급 서열로 옳은 것은?', c:['빌라주 > 프리미에 크뤼 > 그랑 크뤼','그랑 크뤼 > 프리미에 크뤼 > 빌라주 > 레지오날','프리미에 크뤼 > 그랑 크뤼 > 빌라주','레지오날 > 빌라주 > 그랑 크뤼'], a:1, e:'그랑 크뤼(약 1%)가 정점, 그 아래 프리미에 크뤼·빌라주·레지오날.'},
+ {q:'헌터 밸리 세미용(Hunter Valley Semillon)의 고전적 스타일은?', c:['오크 풍미의 풀바디','저알코올·고산도로 병숙성 후 토스트 풍미 발현','스위트','주정강화'], a:1, e:'어릴 땐 중성적이지만 10년+ 숙성 시 꿀·토스트로 변모하는 명물.'},
+ {q:'코르크 오염(TCA)의 전형적인 냄새는?', c:['식초','젖은 골판지·곰팡이','성냥·유황','간장'], a:1, e:'트리클로로아니솔(TCA). 과일향을 죽이고 곰팡이 낀 지하실 냄새를 낸다.'},
+],
+4:[
+ {q:'셰리 양조에서 플로르(flor)의 역할은?', c:['색 추출','산막효모가 산소를 차단하고 아세트알데히드 풍미 생성','타닌 연화','당분 농축'], a:1, e:'피노(Fino) 스타일의 핵심. 플로르 아래서 생물학적 숙성이 일어난다.'},
+ {q:'빈티지 포트(Vintage Port)의 병입 시점은?', c:['수확 후 2~3년 내 병입, 이후 병 숙성','10년 오크 숙성 후','솔레라 통과 후','매년 병입'], a:0, e:'선언(declared) 빈티지만 생산. 이른 병입 후 수십 년 병 숙성 잠재력.'},
+ {q:'숙성된 리슬링의 페트롤 향을 내는 화합물은?', c:['로툰돈','TDN','디아세틸','메톡시피라진'], a:1, e:'TDN(트리메틸 디하이드로나프탈렌). 일조량 많은 빈티지에서 두드러진다.'},
+ {q:'샴페인의 르뮈아주(remuage/riddling)의 목적은?', c:['기포 생성','효모 침전물을 병목으로 모으기','당도 조절','산화 촉진'], a:1, e:'데고르주멍(침전물 제거) 전에 병을 돌려 세워 앙금을 모은다.'},
+ {q:'토카이 아수(Tokaji Aszú)의 푸토뇨스(puttonyos)는 무엇을 표시했나?', c:['알코올 도수','귀부 포도 반죽의 첨가량(당도 수준)','숙성 연수','밭 등급'], a:1, e:'귀부 포도 첨가량 단위. 현행 규정상 아수는 잔당 120g/L 이상.'},
+ {q:'뮈스카데 쉬르 리(Muscadet Sur Lie)의 핵심 기법은?', c:['오크 발효','효모 앙금 위 숙성으로 질감·풍미 강화','늦수확','탄산 주입'], a:1, e:'믈롱 드 부르고뉴를 앙금과 함께 겨울을 나게 해 바디와 미세한 기포감을 준다.'},
+ {q:'프랑스 남서부 마디랑(Madiran)의 주 품종은?', c:['타나(Tannat)','네그레트','말벡','페르 세르바두'], a:0, e:'타닌의 어원처럼 강건한 타나. 미량산소화(micro-oxygenation)가 이곳에서 개발됐다.'},
+ {q:'19세기 필록세라 위기의 최종 해결책은?', c:['살충제 살포','침수 재배','미국종 대목에 접목','유황 훈증'], a:2, e:'필록세라에 저항성 있는 미국종 뿌리에 유럽종(vinifera)을 접목.'},
+ {q:'독일 VDP의 그로세스 게벡스(Grosses Gewächs, GG)란?', c:['국가 법정 최고 등급','VDP 협회의 그랑 크뤼급 밭에서 나온 드라이 와인','스위트 최고 등급','스파클링 등급'], a:1, e:'VDP는 사설 생산자 협회. GG는 그로세 라게(최고 밭)의 드라이 와인.'},
+ {q:'브루넬로 디 몬탈치노(Brunello di Montalcino)의 규정 품종은?', c:['산지오베제 100%','산지오베제 70% 이상','산지오베제+카나이올로','몬테풀치아노 100%'], a:0, e:'산지오베제(현지명 브루넬로) 100%만 허용. 출시 전 최소 5년 숙성.'},
+ {q:'샤블리의 유명한 토양은?', c:['갈레(둥근 자갈)','키메리지안 석회암(굴 화석)','점판암','화산토'], a:1, e:'쥐라기 키메리지안 이회토·석회암. 굴 껍데기 화석이 미네랄리티의 상징.'},
+ {q:'저온 안정화(cold stabilization)의 목적은?', c:['색 고정','주석산염 결정 침전 제거','알코올 저감','발효 중단'], a:1, e:'병입 후 주석 결정이 생기지 않도록 미리 저온에서 석출시킨다.'},
+ {q:'보르도 포므롤(Pomerol)에 대한 옳은 설명은?', c:['1855 등급 1등급 5개 보유','공식 샤토 등급 체계가 없다','화이트만 생산','메독의 코뮌이다'], a:1, e:'페트뤼스의 고향이지만 공식 등급이 없다. 메를로 중심의 우안 산지.'},
+ {q:'호주 클레어·에덴 밸리 리슬링의 전형적 스타일은?', c:['오프드라이 저산도','드라이·고산도·라임 풍미, 스크류캡 병숙성','귀부 스위트','주정강화'], a:1, e:'드라이하고 산도가 쨍한 라임 스타일. 스크류캡 선구 산지.'},
+ {q:'귀부균이 "고귀하게" 작용하기 위한 이상적 조건은?', c:['하루 종일 다습','아침 안개·습기 + 오후의 건조한 햇살','완전 건조','저온 다우'], a:1, e:'아침에 균이 활동하고 오후에 말라야 회색곰팡이(rot)가 아닌 귀부가 된다.'},
+],
+5:[
+ {q:'샤토네프뒤파프 AOC가 전통적으로 허용해온 품종 수는?', c:['5개','8개','13개','21개'], a:2, e:'전통적으로 13품종(색 변종 포함 세면 18). 그르나슈·시라·무르베드르 외 백품종도 레드 블렌드에 허용.'},
+ {q:'그랑 크뤼 몽라셰(Le Montrachet)가 걸쳐 있는 두 마을은?', c:['뫼르소·볼네','퓔리니 몽라셰·샤사뉴 몽라셰','샤블리·본','포마르·상트네'], a:1, e:'두 마을이 밭을 나눠 갖고 마을 이름에 몽라셰를 붙였다.'},
+ {q:'쥐라(Jura) 뱅 존(Vin Jaune)의 품종은?', c:['샤르도네','풀사르','사바냉','트루소'], a:2, e:'사바냉 100%. 부알(voile, 효모막) 아래 6년 이상 숙성, 620ml 클라블랭 병.'},
+ {q:'마데이라의 에스투파젬(estufagem)이란?', c:['냉각 안정화','가열 숙성으로 마데리제이션 유도','귀부 농축','병내 2차 발효'], a:1, e:'와인을 인위적으로 가열해 캐러멜화된 산화 풍미를 만든다. 고급품은 자연 가열(canteiro).'},
+ {q:'캄파니아 DOCG 타우라시(Taurasi)의 주 품종은?', c:['알리아니코','피아노','그레코','팔랑기나'], a:0, e:'"남부의 바롤로". 알리아니코의 강한 타닌과 산도, 장기 숙성력.'},
+ {q:'1855 메독 등급에서 1973년 2등급→1등급으로 승격한 샤토는?', c:['샤토 라투르','샤토 무통 로칠드','샤토 마고','샤토 오브리옹'], a:1, e:'유일한 등급 변경 사례. "Premier je suis, second je fus."'},
+ {q:'1976년 "파리의 심판" 화이트 부문 1위는?', c:['뫼르소 샤름','샤토 몬텔레나 샤르도네','바타르 몽라셰','스택스 립 샤르도네'], a:1, e:'캘리포니아 샤토 몬텔레나 1973이 부르고뉴를 제쳤다. 레드 1위는 스택스 립 와인 셀라스.'},
+ {q:'조지아 크베브리(Qvevri) 양조법에 대한 옳은 설명은?', c:['참나무 통 숙성법','땅에 묻는 점토 항아리 양조, 유네스코 무형문화유산(2013)','스테인리스 저온 발효','가열 숙성'], a:1, e:'포도를 껍질·줄기째 크베브리에 넣어 발효·숙성. 앰버 와인의 원형.'},
+ {q:'남아공 피노타주(Pinotage)의 교배 조합은?', c:['피노 누아 × 생소','피노 누아 × 시라','카베르네 프랑 × 소비뇽 블랑','피노 누아 × 가메'], a:0, e:'1925년 페롤드 교수가 교배. 생소의 현지명이 에르미타주라 피노+타주.'},
+ {q:'일반적인 와인의 pH 범위는?', c:['1.5~2.5','3.0~4.0','4.5~5.5','6.0~7.0'], a:1, e:'대략 3.0~4.0. 낮을수록(산도 높을수록) 미생물 안정성과 색이 좋아진다.'},
+ {q:'사시카이아(Sassicaia)의 주 품종은?', c:['산지오베제','카베르네 소비뇽','메를로','네비올로'], a:1, e:'카베르네 소비뇽 주체의 원조 수퍼 투스칸. 단독 DOC(Bolgheri Sassicaia)를 가진 유일한 이탈리아 와인.'},
+ {q:'시라(Syrah)의 후추 향을 내는 화합물은?', c:['TDN','로툰돈(rotundone)','메톡시피라진','티올'], a:1, e:'로툰돈. 서늘한 기후 시라와 그뤼너 벨트리너에서 두드러진다.'},
+ {q:'셰리의 팔로 코르타도(Palo Cortado)란?', c:['가장 스위트한 셰리','피노의 섬세함과 올로로소의 바디를 겸비한 희귀 스타일','증류주','신대륙 셰리'], a:1, e:'플로르가 사라져 산화 숙성으로 전환된, 두 세계를 잇는 스타일.'},
+ {q:'고대 로마에서 가장 명성 높았던 와인은?', c:['팔레르눔(Falernum)','포스카','물숨','레치나'], a:0, e:'캄파니아 팔레르노 산의 화이트. 오파미안 빈티지(BC 121)는 백 년 넘게 회자됐다.'},
+ {q:'조지아가 "와인의 요람"으로 불리는 근거는?', c:['최대 생산국이라서','약 8000년 전 양조 흔적(세계 최고最古)이 발견되어서','포도 품종이 가장 많아서','로마에 최초 수출해서'], a:1, e:'기원전 6000년경 토기에서 와인 양조 증거 발견(2017 PNAS). 500+ 토착 품종도 보유.'},
+],
+};
+
+// ---------- 캐릭터: 진영별 전통복장 여5/남5 (인라인 SVG) ----------
+// 변형: {name, skin, hair, style(hair), c1(옷 주색), c2(옷 부색), acc(장식)}
+const CHAR_SETS = {
+rome:{
+ f:[
+  {name:'리비아',    skin:'#f6d7b8', hair:'#2e1f14', style:'bun',    c1:'#e8e2d4', c2:'#a3323b', acc:'diadem'},
+  {name:'율리아',    skin:'#eec39a', hair:'#5b3a1e', style:'long',   c1:'#d9c7e8', c2:'#7a5a9e', acc:'none'},
+  {name:'옥타비아',  skin:'#f2c9a4', hair:'#8a5a2b', style:'braids', c1:'#f0d9b0', c2:'#b8862d', acc:'veil'},
+  {name:'코르넬리아',skin:'#d9a26f', hair:'#1b1b1b', style:'bun',    c1:'#cfe0d0', c2:'#4a6b5a', acc:'none'},
+  {name:'아우렐리아',skin:'#f6d7b8', hair:'#b8863b', style:'long',   c1:'#f2cfcf', c2:'#a3323b', acc:'diadem'},
+ ],
+ m:[
+  {name:'마르쿠스',  skin:'#eec39a', hair:'#2e1f14', style:'short',  c1:'#efe9dc', c2:'#a3323b', acc:'laurel'},
+  {name:'가이우스',  skin:'#d9a26f', hair:'#1b1b1b', style:'short',  c1:'#efe9dc', c2:'#5a4a9e', acc:'none'},
+  {name:'루키우스',  skin:'#f2c9a4', hair:'#5b3a1e', style:'curly',  c1:'#e2d5b8', c2:'#7a2f2f', acc:'laurel'},
+  {name:'섹스투스',  skin:'#c68950', hair:'#2e1f14', style:'short',  c1:'#efe9dc', c2:'#3d6b4f', acc:'none'},
+  {name:'퀸투스',    skin:'#f6d7b8', hair:'#8a5a2b', style:'curly',  c1:'#e8dfc8', c2:'#b8862d', acc:'none'},
+ ],
+},
+georgia:{
+ f:[
+  {name:'니노',      skin:'#f6d7b8', hair:'#1b1b1b', style:'braids', c1:'#f4efe6', c2:'#a3323b', acc:'lechaki'},
+  {name:'타마르',    skin:'#f2c9a4', hair:'#2e1f14', style:'braids', c1:'#dbe4f0', c2:'#3d5a8a', acc:'lechaki'},
+  {name:'케테반',    skin:'#eec39a', hair:'#5b3a1e', style:'long',   c1:'#e9d8e8', c2:'#7a3a6e', acc:'crown'},
+  {name:'마리암',    skin:'#d9a26f', hair:'#1b1b1b', style:'long',   c1:'#e8e6d4', c2:'#4a6b5a', acc:'lechaki'},
+  {name:'나나',      skin:'#f6d7b8', hair:'#6e4a2f', style:'braids', c1:'#f2d9c4', c2:'#8a5a2b', acc:'crown'},
+ ],
+ m:[
+  {name:'바흐탕',    skin:'#eec39a', hair:'#1b1b1b', style:'short',  c1:'#3a3a42', c2:'#c9a227', acc:'papakha'},
+  {name:'기오르기',  skin:'#d9a26f', hair:'#2e1f14', style:'short',  c1:'#5a3038', c2:'#d9c9a3', acc:'papakha'},
+  {name:'다비트',    skin:'#f2c9a4', hair:'#5b3a1e', style:'curly',  c1:'#40506a', c2:'#c9a227', acc:'none'},
+  {name:'레반',      skin:'#c68950', hair:'#1b1b1b', style:'short',  c1:'#4a4a3a', c2:'#e0d6b8', acc:'papakha'},
+  {name:'주라브',    skin:'#f6d7b8', hair:'#6e4a2f', style:'curly',  c1:'#6a3a30', c2:'#d9c9a3', acc:'none'},
+ ],
+},
+};
+
+// 캐릭터 SVG 내부 마크업 생성 (viewBox 0 0 80 112 기준)
+function charInner(faction, gender, vi){
+  const v = CHAR_SETS[faction][gender][vi];
+  let s = '';
+  const cx = 40, hy = 30; // 머리 중심
+  // ---- 몸통 (복장) ----
+  if(faction === 'rome' && gender === 'm'){
+    // 토가: 튜닉 + 어깨 드레이프
+    s += `<path d="M22,58 Q40,50 58,58 L62,104 Q40,110 18,104 Z" fill="${v.c1}" stroke="#8a7a5a" stroke-width="1.5"/>`;
+    s += `<path d="M22,58 Q30,54 34,52 L26,104 L18,104 Z" fill="${v.c2}" opacity=".9"/>`;
+    s += `<path d="M34,52 Q52,58 58,72 L62,90 L54,92 Q50,70 34,58 Z" fill="${v.c2}" opacity=".85"/>`;
+  } else if(faction === 'rome' && gender === 'f'){
+    // 스톨라 + 팔라
+    s += `<path d="M24,56 Q40,48 56,56 L64,106 Q40,112 16,106 Z" fill="${v.c1}" stroke="#8a7a5a" stroke-width="1.5"/>`;
+    s += `<path d="M24,56 L56,56 L54,64 Q40,58 26,64 Z" fill="${v.c2}" opacity=".8"/>`;
+    s += `<path d="M16,106 Q40,100 64,106 L64,110 Q40,116 16,110 Z" fill="${v.c2}" opacity=".7"/>`;
+    s += `<path d="M56,56 Q66,70 64,92 L58,92 Q58,72 52,60 Z" fill="${v.c2}" opacity=".9"/>`; // 팔라 드레이프
+  } else if(faction === 'georgia' && gender === 'm'){
+    // 초하(chokha): 긴 코트 + 가지리(탄창 장식) + 벨트
+    s += `<path d="M24,56 Q40,50 56,56 L60,106 Q40,112 20,106 Z" fill="${v.c1}" stroke="#22222a" stroke-width="1.5"/>`;
+    s += `<path d="M40,56 L40,104" stroke="#22222a" stroke-width="1.2"/>`;
+    s += `<path d="M34,52 L40,64 L46,52 Z" fill="${v.c2}"/>`; // 가슴 V
+    // 가지리 (양쪽 4개씩)
+    for(let i = 0; i < 4; i++){
+      s += `<rect x="${26+i*3.2}" y="${62+i*1.1}" width="2.2" height="9" rx="1" fill="${v.c2}" transform="rotate(-12 ${27+i*3.2} 66)"/>`;
+      s += `<rect x="${47+i*3.2}" y="${65-i*1.1}" width="2.2" height="9" rx="1" fill="${v.c2}" transform="rotate(12 ${48+i*3.2} 69)"/>`;
+    }
+    s += `<rect x="26" y="82" width="28" height="4" rx="2" fill="${v.c2}"/>`; // 벨트
+    s += `<rect x="37" y="81" width="6" height="6" rx="1" fill="#8a7a5a"/>`;  // 버클
+  } else {
+    // 조지아 여성: 카르툴리 드레스 + 화려한 벨트
+    s += `<path d="M26,56 Q40,48 54,56 L62,106 Q40,112 18,106 Z" fill="${v.c1}" stroke="#8a7a5a" stroke-width="1.5"/>`;
+    s += `<path d="M33,56 Q40,52 47,56 L47,78 L33,78 Z" fill="${v.c2}" opacity=".35"/>`;
+    s += `<path d="M40,56 L40,78" stroke="${v.c2}" stroke-width="1.5"/>`;
+    s += `<rect x="28" y="76" width="24" height="5" rx="2.5" fill="${v.c2}"/>`;
+    s += `<path d="M36,81 L34,96 M40,81 L40,98 M44,81 L46,96" stroke="${v.c2}" stroke-width="1.2" opacity=".7"/>`; // 벨트 자수 늘어짐
+  }
+  // ---- 팔(소매 힌트) ----
+  s += `<ellipse cx="20" cy="70" rx="5" ry="12" fill="${v.c1}" stroke="#8a7a5a" stroke-width="1"/>`;
+  s += `<ellipse cx="60" cy="70" rx="5" ry="12" fill="${v.c1}" stroke="#8a7a5a" stroke-width="1"/>`;
+  s += `<circle cx="20" cy="82" r="3.4" fill="${v.skin}"/><circle cx="60" cy="82" r="3.4" fill="${v.skin}"/>`;
+  // ---- 목/머리 ----
+  s += `<rect x="36" y="44" width="8" height="8" fill="${v.skin}"/>`;
+  s += `<circle cx="${cx}" cy="${hy}" r="15" fill="${v.skin}"/>`;
+  // ---- 머리카락 ----
+  if(v.style === 'short'){
+    s += `<path d="M25,28 Q26,13 40,13 Q54,13 55,28 Q54,20 40,19 Q26,20 25,28 Z" fill="${v.hair}"/>`;
+    s += `<path d="M25,28 Q25,17 40,15 Q55,17 55,28 L55,24 Q52,17 40,16 Q28,17 25,24 Z" fill="${v.hair}"/>`;
+  } else if(v.style === 'curly'){
+    for(const [dx,dy] of [[-12,-8],[-7,-13],[0,-15],[7,-13],[12,-8],[-14,-2],[14,-2]]){
+      s += `<circle cx="${cx+dx}" cy="${hy+dy}" r="5.5" fill="${v.hair}"/>`;
+    }
+  } else if(v.style === 'bun'){
+    s += `<path d="M25,30 Q24,14 40,14 Q56,14 55,30 Q52,20 40,20 Q28,20 25,30 Z" fill="${v.hair}"/>`;
+    s += `<circle cx="40" cy="12" r="6" fill="${v.hair}"/>`;
+  } else if(v.style === 'long'){
+    s += `<path d="M25,30 Q24,14 40,14 Q56,14 55,30 Q52,20 40,20 Q28,20 25,30 Z" fill="${v.hair}"/>`;
+    s += `<path d="M25,26 Q22,46 26,56 L31,56 Q28,42 29,28 Z" fill="${v.hair}"/>`;
+    s += `<path d="M55,26 Q58,46 54,56 L49,56 Q52,42 51,28 Z" fill="${v.hair}"/>`;
+  } else if(v.style === 'braids'){
+    s += `<path d="M25,30 Q24,14 40,14 Q56,14 55,30 Q52,20 40,20 Q28,20 25,30 Z" fill="${v.hair}"/>`;
+    for(let i = 0; i < 4; i++){
+      s += `<circle cx="${27}" cy="${34+i*7}" r="3.2" fill="${v.hair}"/>`;
+      s += `<circle cx="${53}" cy="${34+i*7}" r="3.2" fill="${v.hair}"/>`;
+    }
+  }
+  // ---- 장식 ----
+  if(v.acc === 'laurel'){
+    s += `<path d="M26,24 Q28,16 34,13 M54,24 Q52,16 46,13" stroke="#5d7a4e" stroke-width="2.5" fill="none"/>`;
+    for(const [lx,ly,r] of [[27,21,2],[29,17,2],[32,14,2],[53,21,2],[51,17,2],[48,14,2]]){
+      s += `<ellipse cx="${lx}" cy="${ly}" rx="${r+1}" ry="${r}" fill="#5d7a4e"/>`;
+    }
+  } else if(v.acc === 'diadem'){
+    s += `<path d="M28,20 Q40,14 52,20" stroke="#c9a227" stroke-width="2.5" fill="none"/><circle cx="40" cy="16.5" r="2.2" fill="#c9a227"/>`;
+  } else if(v.acc === 'veil'){
+    s += `<path d="M24,26 Q24,10 40,10 Q56,10 56,26 L58,48 L52,46 L54,26 Q52,16 40,15 Q28,16 26,26 L28,46 L22,48 Z" fill="#efe0bf" opacity=".9"/>`;
+  } else if(v.acc === 'papakha'){
+    s += `<path d="M24,24 Q24,8 40,8 Q56,8 56,24 L54,27 Q52,13 40,13 Q28,13 26,27 Z" fill="#2a2a2a"/>`;
+    s += `<path d="M25,23 Q30,26 40,26 Q50,26 55,23 L55,26 Q48,29 40,29 Q32,29 25,26 Z" fill="#3d3d3d"/>`;
+  } else if(v.acc === 'lechaki'){
+    s += `<path d="M24,26 Q24,9 40,9 Q56,9 56,26 L60,54 L54,52 L54,26 Q52,15 40,14 Q28,15 26,26 L26,52 L20,54 Z" fill="#f7f3ea" opacity=".95" stroke="#d9cfb8" stroke-width="1"/>`;
+    s += `<path d="M28,19 Q40,13 52,19" stroke="#c9a227" stroke-width="1.6" fill="none"/>`;
+  } else if(v.acc === 'crown'){
+    s += `<path d="M29,19 L31,12 L36,17 L40,10 L44,17 L49,12 L51,19 Z" fill="#c9a227" stroke="#a3832a" stroke-width="1"/>`;
+  }
+  // ---- 얼굴 ----
+  s += `<circle cx="34" cy="30" r="1.8" fill="#3b2f22"/><circle cx="46" cy="30" r="1.8" fill="#3b2f22"/>`;
+  s += `<circle cx="31" cy="35" r="2.6" fill="#f2a8a0" opacity=".55"/><circle cx="49" cy="35" r="2.6" fill="#f2a8a0" opacity=".55"/>`;
+  s += `<path d="M36,37 Q40,40 44,37" stroke="#3b2f22" stroke-width="1.6" fill="none" stroke-linecap="round"/>`;
+  return s;
+}
+function charSVG(faction, gender, vi, size){
+  return `<svg width="${size}" height="${Math.round(size*1.4)}" viewBox="0 0 80 112">${charInner(faction, gender, vi)}</svg>`;
+}
+function charFace(faction, gender, vi, size){
+  // 얼굴 위주 크롭 (헤더·퀴즈용)
+  return `<svg width="${size}" height="${size}" viewBox="14 4 52 52">${charInner(faction, gender, vi)}</svg>`;
+}
+
+// ---------- 상태 ----------
+const SEASONS = ['봄','여름','가을','겨울'];
+let S = null;
+let selRegion = null;
+let quiz = null;
+let sandTimer = null;
+let pendingFaction = null;
+let pendingChar = null;
+let justWonId = null;
+
+function newState(faction, chr){
+  const startId = faction === 'georgia' ? 'colchis' : 'latium';
+  const regions = {};
+  for(const r of REGIONS){
+    regions[r.id] = {owned:false, vineyards:[], b:{winery:false, market:false, wall:false, cellar:false}, price:basePrice(r)};
+  }
+  regions[startId].owned = true;
+  regions[startId].vineyards = [{stage:2}];
+  regions[startId].b.market = true;
+  return {
+    faction, startId, char:chr, charAt:startId,
+    gold:100, seeds:3, grapes:0, wine:2, supplies:30,
+    year:1, seasonIdx:0,
+    regions, merchantDeal:null, caravan:null,
+    log:[], won:false,
+  };
+}
+function basePrice(r){ return Math.round(15 * r.priceMod); }
+function isGeorgia(){ return S.faction === 'georgia'; }
+function isRome(){ return S.faction === 'rome'; }
+function factionColor(){ return isRome() ? '#a3323b' : '#b8862d'; }
+function buildCost(g){ return isRome() ? Math.round(g * 0.7) : g; }
+function maxOwnedTier(){
+  let m = 0;
+  for(const r of REGIONS) if(S.regions[r.id].owned && r.tier > m) m = r.tier;
+  return m;
+}
+function ownedCount(){ return REGIONS.filter(r => S.regions[r.id].owned).length; }
+
+// ---------- 로그 ----------
+function log(msg, cls){
+  S.log.push({msg, cls: cls || ''});
+  if(S.log.length > 60) S.log.shift();
+  renderLog();
+}
+function renderLog(){
+  const el = document.getElementById('log');
+  el.innerHTML = S.log.map(l => `<div class="ll ${l.cls}">${l.msg}</div>`).join('');
+  el.scrollTop = el.scrollHeight;
+}
+
+// ---------- 지도 렌더 ----------
+const MAP_W = 780, MAP_H = 500;
+function landPaths(){
+  const land = 'fill="#e9dcae" stroke="#b9a06f" stroke-width="2" stroke-linejoin="round"';
+  return `
+  <!-- 이베리아 -->
+  <path d="M18,252 Q60,232 122,240 Q152,252 148,282 Q142,330 100,352 Q50,348 28,320 Q12,285 18,252 Z" ${land}/>
+  <!-- 갈리아·게르마니아 -->
+  <path d="M112,92 Q200,58 300,70 Q330,90 322,140 Q305,185 268,208 Q230,232 168,224 Q128,210 118,165 Q106,125 112,92 Z" ${land}/>
+  <!-- 이탈리아 반도 -->
+  <path d="M300,222 Q322,218 336,238 Q348,262 358,286 Q374,312 388,330 Q396,348 386,360 Q370,356 356,338 Q338,314 326,290 Q310,262 298,246 Z" ${land}/>
+  <path d="M338,368 L366,362 L360,386 L336,384 Z" ${land}/>
+  <!-- 발칸·그리스 -->
+  <path d="M392,214 Q446,224 470,250 Q482,290 474,330 Q462,362 442,372 Q424,350 420,318 Q408,276 396,250 Z" ${land}/>
+  <!-- 아나톨리아 -->
+  <path d="M492,232 Q570,214 646,224 Q668,248 658,278 Q600,296 544,290 Q504,278 492,254 Z" ${land}/>
+  <!-- 캅카스 (콜키스) -->
+  <path d="M578,178 Q650,158 716,168 Q736,192 726,224 Q672,248 620,240 Q588,222 578,198 Z" ${land}/>
+  <!-- 페르시아 -->
+  <path d="M660,288 Q720,272 758,282 L762,408 Q716,420 676,406 Q650,368 652,324 Z" ${land}/>
+  <!-- 이집트·북아프리카 -->
+  <path d="M290,478 Q420,432 540,420 Q660,414 764,428 L764,498 L290,498 Z" ${land}/>
+  <path d="M508,424 Q522,408 536,424 Z" ${land}/>
+  `;
+}
+function routeLines(){
+  // 티어 순 항로 (장식)
+  let s = '';
+  const order = ['hispania','burdigala','gallia','germania','latium','campania','hellas','colchis','persia','aegyptus'];
+  for(let i = 0; i < order.length - 1; i++){
+    const a = REGIONS.find(r => r.id === order[i]).pos;
+    const b = REGIONS.find(r => r.id === order[i+1]).pos;
+    s += `<path d="M${a.x},${a.y} Q${(a.x+b.x)/2},${(a.y+b.y)/2-24} ${b.x},${b.y}" stroke="#b9a06f" stroke-width="1.4" stroke-dasharray="4 5" fill="none" opacity=".5"/>`;
+  }
+  return s;
+}
+function markerSVG(r){
+  const rs = S.regions[r.id];
+  const gate = maxOwnedTier() + 1;
+  const locked = !rs.owned && r.tier > gate;
+  const fc = factionColor();
+  let inner = '';
+  if(rs.owned){
+    // 영토 글로우 + 포도밭 + 진영 깃발
+    inner += `<circle r="30" fill="${fc}" opacity=".18"/>`;
+    inner += `<circle r="13" fill="#f5ead3" stroke="${fc}" stroke-width="2.5"/>`;
+    // 포도송이 아이콘
+    inner += `<g transform="translate(0,1.5)">
+      <circle cx="-3" cy="-2" r="2.6" fill="#722f37"/><circle cx="3" cy="-2" r="2.6" fill="#722f37"/>
+      <circle cx="0" cy="1.5" r="2.6" fill="#8e3a44"/><circle cx="-3" cy="4" r="2.4" fill="#722f37"/>
+      <circle cx="3" cy="4" r="2.4" fill="#722f37"/><circle cx="0" cy="6.5" r="2.2" fill="#8e3a44"/>
+      <path d="M0,-5 Q1,-9 4,-10" stroke="#5d7a4e" stroke-width="1.6" fill="none"/>
+      <ellipse cx="5" cy="-9" rx="3" ry="1.8" fill="#5d7a4e" transform="rotate(-20 5 -9)"/></g>`;
+    // 깃발
+    inner += `<g class="flagpop" transform="translate(9,-24)">
+      <line x1="0" y1="0" x2="0" y2="22" stroke="#6b5a3e" stroke-width="2"/>
+      <path d="M0,1 L14,5 L0,10 Z" fill="${fc}" stroke="#5a2020" stroke-width=".8"/></g>`;
+  } else if(locked){
+    inner += `<circle r="11" fill="#d8cdb2" stroke="#9a8a68" stroke-width="2"/>`;
+    inner += `<rect x="-4" y="-3" width="8" height="7" rx="1.5" fill="#8a7a5a"/><path d="M-2.5,-3 V-6 a2.5,2.5 0 0 1 5,0 V-3" stroke="#8a7a5a" stroke-width="1.8" fill="none"/>`;
+  } else {
+    // 정복 가능: 붉은 펄스 링 + 성채
+    inner += `<circle class="pulsering" r="14" fill="none" stroke="#a3323b" stroke-width="2.5"/>`;
+    inner += `<circle r="12" fill="#fdf3e0" stroke="#a3323b" stroke-width="2.5"/>`;
+    inner += `<path d="M-7,5 L-7,-3 L-4,-3 L-4,-6 L-1.5,-6 L-1.5,-3 L1.5,-3 L1.5,-6 L4,-6 L4,-3 L7,-3 L7,5 Z" fill="#8a6a4a"/>`;
+  }
+  const label = `<text class="rname" y="${rs.owned ? 34 : 30}">${r.name}</text>
+    <text class="rtier" y="${rs.owned ? 45 : 41}">${TIER_NAMES[r.tier]}${!rs.owned && !locked ? ' · 정복 가능' : ''}</text>`;
+  const selRing = selRegion === r.id ? `<circle r="18" fill="none" stroke="#c9a227" stroke-width="3" stroke-dasharray="5 4"/>` : '';
+  return `<g class="marker ${locked?'locked':''} ${justWonId===r.id?'justwon':''}" transform="translate(${r.pos.x},${r.pos.y})" onclick="selectRegion('${r.id}')">
+    ${selRing}${inner}${label}</g>`;
+}
+function renderMap(){
+  const fc = S ? factionColor() : '#a3323b';
+  let charM = '';
+  if(S && S.char){
+    ensureCharPos();
+    charM = `<g id="charmarker" transform="translate(${charPos.x-13},${charPos.y-52})">
+      <ellipse id="charshadow" cx="13" cy="40" rx="10" ry="3" fill="#3b2f22" opacity=".25"/>
+      <g id="charbody"><g transform="scale(0.33)">${charInner(S.faction, S.char.gender, S.char.vi)}</g></g>
+      <text x="13" y="-6" text-anchor="middle" font-size="10" font-weight="800" fill="${fc}"
+        paint-order="stroke" stroke="#f5ead3" stroke-width="3">${S.char.name}</text></g>`;
+  }
+  document.getElementById('mapwrap').innerHTML = `
+  <svg id="worldmap" viewBox="0 0 ${MAP_W} ${MAP_H}">
+    <defs>
+      <radialGradient id="seagrad" cx="45%" cy="45%">
+        <stop offset="0%" stop-color="#bcd8d4"/><stop offset="100%" stop-color="#9dc0c4"/>
+      </radialGradient>
+    </defs>
+    <rect width="${MAP_W}" height="${MAP_H}" rx="10" fill="url(#seagrad)"/>
+    <g opacity=".5" stroke="#8fb4b8" stroke-width="1.3" fill="none">
+      <path d="M200,330 q10,-6 20,0 q10,6 20,0"/><path d="M420,395 q10,-6 20,0 q10,6 20,0"/>
+      <path d="M560,340 q10,-6 20,0 q10,6 20,0"/><path d="M120,420 q10,-6 20,0 q10,6 20,0"/>
+    </g>
+    ${landPaths()}
+    <text x="300" y="395" font-size="20" font-style="italic" font-weight="700" fill="#6f9296" opacity=".8" letter-spacing="6">MARE NOSTRUM</text>
+    <text x="640" y="130" font-size="12" font-style="italic" fill="#8a7a5a" opacity=".8">CAUCASUS</text>
+    ${routeLines()}
+    ${REGIONS.map(markerSVG).join('')}
+    ${charM}
+  </svg>`;
+  justWonId = null;
+}
+// ---------- 캐릭터 무브먼트 (마리오식) ----------
+let charPos = null, charFacing = 1, walkPhase = 0, hopY = 0, stepTick = 0;
+let travel = null;  // {pts, i, onArrive}
+let jump = null;    // {t}
+const KEYS = {};
+
+function ensureCharPos(){
+  if(!charPos && S){
+    const r = REGIONS.find(x => x.id === S.charAt) || REGIONS.find(x => x.id === S.startId);
+    charPos = {x:r.pos.x, y:r.pos.y};
+  }
+}
+function bezierPts(a, b){
+  const cx = (a.x + b.x) / 2, cy = (a.y + b.y) / 2 - 40;
+  const n = Math.max(16, Math.round(Math.hypot(b.x - a.x, b.y - a.y) / 8));
+  const pts = [];
+  for(let i = 1; i <= n; i++){
+    const t = i / n, u = 1 - t;
+    pts.push({x: u*u*a.x + 2*u*t*cx + t*t*b.x, y: u*u*a.y + 2*u*t*cy + t*t*b.y});
+  }
+  return pts;
+}
+function travelTo(id, onArrive){
+  ensureCharPos();
+  const r = REGIONS.find(x => x.id === id);
+  travel = {pts:bezierPts(charPos, r.pos), i:0, onArrive};
+}
+function doJump(){ if(!jump){ jump = {t:0}; sfx('jump'); } }
+function celebrate(){
+  doJump();
+  setTimeout(doJump, 550); setTimeout(doJump, 1100);
+}
+function modalOpen(){
+  return ['startmodal','charmodal','quizmodal','endmodal'].some(
+    m => !document.getElementById(m).classList.contains('hidden'));
+}
+function gameLoop(){
+  requestAnimationFrame(gameLoop);
+  if(!S || !S.char) return;
+  ensureCharPos();
+  let moving = false;
+  if(travel){
+    let remaining = 3.4;
+    while(remaining > 0 && travel.i < travel.pts.length){
+      const p = travel.pts[travel.i];
+      const d = Math.hypot(p.x - charPos.x, p.y - charPos.y);
+      if(d <= remaining){ charPos.x = p.x; charPos.y = p.y; travel.i++; remaining -= d; }
+      else {
+        if(p.x < charPos.x - 0.3) charFacing = -1; else if(p.x > charPos.x + 0.3) charFacing = 1;
+        charPos.x += (p.x - charPos.x) / d * remaining;
+        charPos.y += (p.y - charPos.y) / d * remaining;
+        remaining = 0;
+      }
+    }
+    moving = true;
+    if(travel.i >= travel.pts.length){
+      const t = travel; travel = null;
+      if(t.onArrive) t.onArrive();
+    }
+  } else if(!modalOpen()){
+    let vx = 0, vy = 0;
+    if(KEYS['arrowleft'] || KEYS['a']) vx -= 1;
+    if(KEYS['arrowright'] || KEYS['d']) vx += 1;
+    if(KEYS['arrowup'] || KEYS['w']) vy -= 1;
+    if(KEYS['arrowdown'] || KEYS['s']) vy += 1;
+    if(vx || vy){
+      const sp = 2.6 / Math.hypot(vx, vy);
+      charPos.x = Math.max(16, Math.min(MAP_W - 16, charPos.x + vx * sp));
+      charPos.y = Math.max(46, Math.min(MAP_H - 12, charPos.y + vy * sp));
+      if(vx) charFacing = vx < 0 ? -1 : 1;
+      moving = true;
+      // 근접 지역 자동 선택
+      let best = null, bd = 28;
+      for(const r of REGIONS){
+        const d = Math.hypot(r.pos.x - charPos.x, r.pos.y - charPos.y);
+        if(d < bd){ bd = d; best = r.id; }
+      }
+      if(best && best !== selRegion){
+        selRegion = best;
+        if(S.regions[best].owned) S.charAt = best;
+        renderMap(); renderDetail();
+      }
+    }
+  }
+  // 걸음 바운스 (마리오식 통통)
+  if(moving){
+    walkPhase += 0.28;
+    hopY = Math.abs(Math.sin(walkPhase)) * 5;
+    if(++stepTick % 14 === 0) sfx('step');
+  } else {
+    walkPhase = 0; hopY *= 0.7;
+  }
+  // 점프
+  let jy = 0;
+  if(jump){
+    jump.t += 1 / 28;
+    if(jump.t >= 1){ jump = null; sfx('land'); }
+    else jy = Math.sin(jump.t * Math.PI) * 20;
+  }
+  applyCharTransform(jy);
+}
+function applyCharTransform(jy){
+  const m = document.getElementById('charmarker');
+  if(!m || !charPos) return;
+  m.setAttribute('transform', `translate(${charPos.x - 13},${charPos.y - 52})`);
+  const lift = hopY + jy;
+  const body = document.getElementById('charbody');
+  if(body) body.setAttribute('transform',
+    charFacing === 1 ? `translate(0,${-lift})` : `translate(26,${-lift}) scale(-1,1)`);
+  const sh = document.getElementById('charshadow');
+  if(sh){
+    const k = Math.max(0.45, 1 - lift / 26);
+    sh.setAttribute('rx', 10 * k);
+    sh.setAttribute('opacity', 0.25 * k);
+  }
+}
+window.addEventListener('keydown', e => {
+  if(modalOpen()) return;
+  const k = e.key.toLowerCase();
+  if(['arrowleft','arrowright','arrowup','arrowdown',' '].includes(k)) e.preventDefault();
+  if(k === ' '){ doJump(); return; }
+  KEYS[k] = true;
+});
+window.addEventListener('keyup', e => { KEYS[e.key.toLowerCase()] = false; });
+
+// ---------- UI 렌더 ----------
+function renderPlayer(){
+  const el = document.getElementById('playerbox');
+  if(!S || !S.char){ el.innerHTML = ''; return; }
+  el.innerHTML = `${charFace(S.faction, S.char.gender, S.char.vi, 34)}
+    <span>${S.char.name} <small style="opacity:.75;">· ${FACTION_NAMES[S.faction]}</small></span>`;
+}
+function renderRes(){
+  const items = [
+    ['골드', S.gold], ['포도씨', S.seeds], ['포도', S.grapes],
+    ['와인', S.wine], ['물자', S.supplies], ['정복', ownedCount() + ' / ' + REGIONS.length],
+  ];
+  document.getElementById('resbar').innerHTML =
+    items.map(([k,v]) => `<div class="res">${k} <span class="v">${v}</span></div>`).join('');
+}
+function renderSeason(){
+  document.getElementById('seasonlabel').textContent = `${S.year}년차 ${SEASONS[S.seasonIdx]}`;
+}
+function sellPrice(r){
+  const rs = S.regions[r.id];
+  let p = rs.price;
+  if(rs.b.cellar) p = Math.round(p * 1.3);
+  if(isGeorgia()) p = Math.round(p * 1.2);
+  if(S.merchantDeal && S.merchantDeal.type === 'sellx2') p = p * 2;
+  return p;
+}
+function seedCost(){ return (S.merchantDeal && S.merchantDeal.type === 'seedhalf') ? 5 : 10; }
+
+function renderDetail(){
+  const el = document.getElementById('detail');
+  if(!selRegion){
+    el.innerHTML = `<h2>지역을 선택하라</h2><div class="sub">지도의 마커를 눌러 지역 정보를 확인한다.</div>
+      <div class="dsec"><h4>목표</h4>10개 지역을 모두 정복하면 포도주 제국이 완성된다.
+      정복하려면 물자와 와인을 챙겨 원정을 떠나 <b>와인 지식 대결</b>에서 승리해야 한다.</div>
+      <div class="dsec"><h4>순환</h4>개간 → 재배(계절 경과) → 수확 → 양조 → 판매/교역 → 원정</div>
+      <div class="dsec"><h4>지도 읽기</h4>깃발 = 아군 영토 · 붉은 링 = 정복 가능 · 자물쇠 = 아직 봉인</div>
+      <div class="dsec"><h4>조작</h4><b>방향키/WASD</b> 걷기 · <b>스페이스</b> 점프 · 지역에 가까이 가면 자동 선택 · 지역 클릭 = 달려가기</div>`;
+    return;
+  }
+  const r = REGIONS.find(x => x.id === selRegion);
+  const rs = S.regions[r.id];
+  let html = `<h2>${r.name} <span style="font-size:11px; background:var(--wine); color:#fff; border-radius:6px; padding:2px 6px;">${TIER_NAMES[r.tier]}</span></h2>
+    <div class="sub">${r.sub}</div>`;
+
+  if(rs.owned){
+    const stageNames = ['씨 심음','새싹','성장 중','수확 가능'];
+    html += `<div class="dsec"><h4>포도밭 (${rs.vineyards.length}/3)</h4>`;
+    rs.vineyards.forEach((v,i) => {
+      html += `<div class="row"><span>밭 ${i+1} — ${stageNames[v.stage]}</span>
+        ${v.stage >= 3 ? `<button class="small leaf" onclick="harvest('${r.id}',${i})">수확</button>` : ''}</div>`;
+    });
+    if(rs.vineyards.length < 3){
+      const c = buildCost(20);
+      html += `<div class="row"><span>새 밭 개간 (씨 1 + ${c}G)</span>
+        <button class="small" onclick="plantVine('${r.id}')" ${S.seeds < 1 || S.gold < c ? 'disabled' : ''}>개간</button></div>`;
+    }
+    html += `</div>`;
+
+    html += `<div class="dsec"><h4>건물</h4>`;
+    const blds = [
+      ['winery','양조장', 60, 10, '포도 2 → 와인 1 양조 가능'],
+      ['market','시장', 40, 0, '와인 판매·물자/씨앗 구매·카라반'],
+      ['wall','성벽', 50, 10, '전쟁 피해 방어' + (isRome() ? ' (로마: 자동 방어)' : '')],
+      ['cellar','셀라(저장고)', 50, 0, '이 지역 판매가 +30%'],
+    ];
+    for(const [k, nm, g0, sup, desc] of blds){
+      const g = buildCost(g0);
+      html += rs.b[k]
+        ? `<div class="row"><span>${nm} — 완공</span><span style="font-size:11px; opacity:.7;">${desc}</span></div>`
+        : `<div class="row"><span>${nm} (${g}G${sup ? '+물자'+sup : ''})</span>
+           <button class="small" onclick="build('${r.id}','${k}',${g},${sup})" ${S.gold < g || S.supplies < sup ? 'disabled' : ''}>건설</button></div>`;
+    }
+    html += `</div>`;
+
+    if(rs.b.winery){
+      html += `<div class="dsec"><h4>양조장</h4>
+        <div class="row"><span>포도 2 → 와인 1</span>
+        <button class="small wine" onclick="makeWine()" ${S.grapes < 2 ? 'disabled' : ''}>양조</button>
+        <button class="small wine" onclick="makeWineAll()" ${S.grapes < 2 ? 'disabled' : ''}>전량 양조</button></div></div>`;
+    }
+
+    if(rs.b.market){
+      const p = sellPrice(r);
+      html += `<div class="dsec"><h4>시장 — 와인 시세 <span class="pricetag">${p}G</span>${S.merchantDeal && S.merchantDeal.type==='sellx2' ? ' (상인 특가 ×2!)' : ''}</h4>
+        <div class="row"><span>와인 판매</span>
+          <button class="small" onclick="sellWine('${r.id}',1)" ${S.wine < 1 ? 'disabled' : ''}>1병</button>
+          <button class="small" onclick="sellWine('${r.id}',5)" ${S.wine < 5 ? 'disabled' : ''}>5병</button>
+          <button class="small" onclick="sellWine('${r.id}',S.wine)" ${S.wine < 1 ? 'disabled' : ''}>전량</button></div>
+        <div class="row"><span>물자 10 구매 (20G)</span>
+          <button class="small" onclick="buySupplies()" ${S.gold < 20 ? 'disabled' : ''}>구매</button></div>
+        <div class="row"><span>포도씨 1 구매 (${seedCost()}G)</span>
+          <button class="small" onclick="buySeed()" ${S.gold < seedCost() ? 'disabled' : ''}>구매</button></div>`;
+      if(!S.caravan){
+        html += `<div class="row"><span>카라반: 와인 5병 → 다음 계절 2배 값 (떼일 위험 20%)</span>
+          <button class="small wine" onclick="sendCaravan('${r.id}')" ${S.wine < 5 ? 'disabled' : ''}>출발</button></div>`;
+      } else {
+        html += `<div class="row"><span>카라반이 먼 시장으로 떠나 있다... (와인 ${S.caravan.wine}병)</span></div>`;
+      }
+      html += `</div>`;
+    }
+  } else {
+    const gate = maxOwnedTier() + 1;
+    const supNeed = r.tier * 10, wineNeed = r.tier;
+    if(r.tier > gate){
+      html += `<div class="dsec"><h4>봉인된 땅</h4>더 낮은 티어의 지역을 먼저 정복해야 이곳으로 원정할 수 있다.</div>`;
+    } else {
+      html += `<div class="dsec"><h4>원정 — 와인 지식 대결</h4>
+        <div>난이도: <b>${TIER_NAMES[r.tier]}</b> — 5문제 중 3문제 이상 정답 시 정복.</div>
+        <div style="margin-top:6px;">원정 비용: <b>물자 ${supNeed}</b> + <b>와인 ${wineNeed}병</b> (현지 지배층에게 바칠 선물)</div>
+        <div class="centerbtns"><button class="wine" onclick="startConquest('${r.id}')" ${S.supplies < supNeed || S.wine < wineNeed ? 'disabled' : ''}>원정 개시</button></div>
+        <div style="font-size:11px; opacity:.7; margin-top:6px;">모르는 문제는 「정답 확인하기」— 단, 물자 ${r.tier*4}이 사라진다. 시간의 모래가 다 떨어지면 오답.</div></div>`;
+    }
+    html += `<div class="dsec"><h4>정보</h4>와인 시세 ${sellPrice(r)}G · 정복 시 이 시장이 열린다.</div>`;
+  }
+  el.innerHTML = html;
+}
+function renderAll(){ renderPlayer(); renderRes(); renderSeason(); renderMap(); renderDetail(); }
+
+// ---------- 행동 ----------
+function selectRegion(id){
+  selRegion = id;
+  const r = REGIONS.find(x => x.id === id);
+  const locked = !S.regions[id].owned && r.tier > maxOwnedTier() + 1;
+  if(!locked){
+    // 클릭한 지역으로 달려간다
+    travelTo(id, () => {
+      if(S.regions[id].owned){ S.charAt = id; save(); }
+    });
+  }
+  renderAll();
+}
+function plantVine(id){
+  const c = buildCost(20);
+  if(S.seeds < 1 || S.gold < c) return;
+  S.seeds--; S.gold -= c;
+  S.regions[id].vineyards.push({stage:0});
+  log(`${nameOf(id)}에 포도씨를 심었다. 정성껏 돌보자.`);
+  sfx('plant'); renderAll();
+}
+function harvest(id, i){
+  const v = S.regions[id].vineyards[i];
+  if(v.stage < 3) return;
+  const y = isGeorgia() ? 4 : 3;
+  S.grapes += y; v.stage = 1;
+  log(`${nameOf(id)} 밭에서 포도 ${y}송이를 수확했다.`, 'good');
+  sfx('coin'); renderAll();
+}
+function build(id, key, g, sup){
+  if(S.gold < g || S.supplies < sup) return;
+  S.gold -= g; S.supplies -= sup;
+  S.regions[id].b[key] = true;
+  log(`${nameOf(id)}에 ${ {winery:'양조장',market:'시장',wall:'성벽',cellar:'셀라'}[key] }을(를) 지었다.`, 'good');
+  sfx('build'); renderAll();
+}
+function makeWine(){
+  if(S.grapes < 2) return;
+  S.grapes -= 2; S.wine += 1;
+  log('포도 2 → 와인 1병을 빚었다.' + (isGeorgia() ? ' 크베브리 속에서 향이 깊어진다.' : ''));
+  sfx('pour'); renderAll();
+}
+function makeWineAll(){
+  const n = Math.floor(S.grapes / 2);
+  if(n < 1) return;
+  S.grapes -= n * 2; S.wine += n;
+  log(`포도 ${n*2} → 와인 ${n}병을 빚었다.`);
+  sfx('pour'); renderAll();
+}
+function sellWine(id, n){
+  n = Math.min(n, S.wine);
+  if(n < 1) return;
+  const p = sellPrice(REGIONS.find(x => x.id === id));
+  S.wine -= n; S.gold += p * n;
+  log(`${nameOf(id)} 시장에서 와인 ${n}병을 ${p*n}G에 팔았다.`, 'good');
+  sfx('coin'); renderAll();
+}
+function buySupplies(){
+  if(S.gold < 20) return;
+  S.gold -= 20; S.supplies += 10;
+  log('물자 10을 사들였다.'); renderAll();
+}
+function buySeed(){
+  const c = seedCost();
+  if(S.gold < c) return;
+  S.gold -= c; S.seeds += 1;
+  log('포도씨 1을 사들였다.'); renderAll();
+}
+function sendCaravan(id){
+  if(S.wine < 5 || S.caravan) return;
+  const p = sellPrice(REGIONS.find(x => x.id === id));
+  S.wine -= 5;
+  S.caravan = {wine:5, price:p*2};
+  log('카라반이 와인 5병을 싣고 먼 시장으로 떠났다. 다음 계절에 대금이 도착한다... 아마도.');
+  renderAll();
+}
+function nameOf(id){ return REGIONS.find(x => x.id === id).name; }
+
+// ---------- 계절 진행 ----------
+function nextSeason(){
+  S.seasonIdx++;
+  if(S.seasonIdx > 3){ S.seasonIdx = 0; S.year++; }
+  const seasonName = SEASONS[S.seasonIdx];
+  S.merchantDeal = null;
+  if(S.seasonIdx !== 3){
+    for(const r of REGIONS){
+      const rs = S.regions[r.id];
+      if(!rs.owned) continue;
+      for(const v of rs.vineyards) if(v.stage < 3) v.stage++;
+    }
+  }
+  for(const r of REGIONS){
+    const base = basePrice(r);
+    S.regions[r.id].price = Math.max(5, Math.round(base * (0.75 + Math.random() * 0.6)));
+  }
+  if(S.caravan){
+    if(Math.random() < 0.2){
+      log(`카라반이 돌아왔다... 빈손으로. 거래 상대가 대금 ${S.caravan.price * S.caravan.wine}G를 떼먹고 사라졌다!`, 'evt');
+      sfx('bad');
+    } else {
+      const got = S.caravan.price * S.caravan.wine;
+      S.gold += got;
+      log(`카라반이 돌아왔다! 원거리 교역 대금 ${got}G 입금.`, 'good');
+      sfx('fanfare');
+    }
+    S.caravan = null;
+  }
+  log(`—— ${S.year}년차 ${seasonName}이 왔다 ——`);
+  rollEvent();
+  if(S.gold < 10 && S.wine === 0 && S.grapes === 0 && S.supplies < 5){
+    S.gold += 30;
+    log('원로원(혹은 마을 어르신들)이 딱하게 여겨 지원금 30G를 보냈다.', 'good');
+  }
+  renderAll();
+}
+
+function rollEvent(){
+  const roll = Math.random();
+  const owned = REGIONS.filter(r => S.regions[r.id].owned);
+  if(roll < 0.10){
+    const r = owned[Math.floor(Math.random() * owned.length)];
+    const rs = S.regions[r.id];
+    const builtKeys = Object.keys(rs.b).filter(k => rs.b[k]);
+    if(rs.vineyards.length > 0 && (builtKeys.length === 0 || Math.random() < 0.5)){
+      rs.vineyards.pop();
+      log(`지진! ${r.name}의 포도밭 하나가 무너졌다.`, 'evt');
+    } else if(builtKeys.length > 0){
+      const k = builtKeys[Math.floor(Math.random() * builtKeys.length)];
+      rs.b[k] = false;
+      log(`지진! ${r.name}의 ${ {winery:'양조장',market:'시장',wall:'성벽',cellar:'셀라'}[k] }이(가) 무너졌다.`, 'evt');
+    } else {
+      log(`${r.name}에 지진이 났지만 다행히 피해는 없었다.`, 'evt');
+    }
+    sfx('bad');
+  } else if(roll < 0.25){
+    const r = owned[Math.floor(Math.random() * owned.length)];
+    const rs = S.regions[r.id];
+    if(rs.b.wall && isRome()){
+      log(`야만족이 ${r.name}을 침공했으나 로마의 성벽 앞에 물러났다.`, 'good');
+    } else if(rs.b.wall && Math.random() < 0.7){
+      log(`야만족이 ${r.name}을 침공! 성벽이 버텨냈다.`, 'good');
+    } else {
+      log(`야만족이 ${r.name}을 침공했다! 지혜로 물리쳐라!`, 'evt');
+      sfx('bad');
+      startDefense(r);
+      return;
+    }
+  } else if(roll < 0.35){
+    if(S.gold >= 50){
+      const lost = Math.round(S.gold * 0.15);
+      S.gold -= lost;
+      log(`외상으로 와인을 가져간 상인이 잠적했다. 대금 ${lost}G를 떼였다!`, 'evt');
+      sfx('bad');
+    } else {
+      log('수상한 상인이 외상을 요구했지만 현명하게 거절했다.');
+    }
+  } else if(roll < 0.45){
+    let grew = 0;
+    for(const r of owned){
+      for(const v of S.regions[r.id].vineyards) if(v.stage < 3){ v.stage++; grew++; }
+    }
+    log(grew ? '완벽한 날씨! 모든 포도밭이 쑥쑥 자랐다.' : '완벽한 날씨가 이어진다.', 'good');
+  } else if(roll < 0.60){
+    if(Math.random() < 0.5){
+      S.merchantDeal = {type:'sellx2'};
+      log('먼 나라의 상인이 찾아왔다! 이번 계절 와인 판매가 2배!', 'good');
+    } else {
+      S.merchantDeal = {type:'seedhalf'};
+      log('종묘상이 마을에 들렀다. 이번 계절 포도씨 반값(5G)!', 'good');
+    }
+    sfx('fanfare');
+  } else if(roll < 0.70){
+    S.supplies += 5;
+    log('유랑 음유시인이 포도밭 노래를 부르고 갔다. 일꾼들의 사기가 올라 물자 +5.', 'good');
+  }
+}
+
+// ---------- 퀴즈 엔진 ----------
+function pickQuestions(tier, n){
+  const pool = [...QUIZ[tier]];
+  const out = [];
+  while(out.length < n && pool.length){
+    out.push(pool.splice(Math.floor(Math.random() * pool.length), 1)[0]);
+  }
+  return out;
+}
+function startConquest(id){
+  const r = REGIONS.find(x => x.id === id);
+  const supNeed = r.tier * 10, wineNeed = r.tier;
+  if(S.supplies < supNeed || S.wine < wineNeed) return;
+  S.supplies -= supNeed; S.wine -= wineNeed;
+  log(`${r.name} 원정 개시! 물자 ${supNeed}, 와인 ${wineNeed}병을 챙겨 떠난다.`);
+  quiz = {mode:'conquest', region:r, qs:pickQuestions(r.tier, 5), idx:0, correct:0};
+  renderAll();
+  travelTo(id, openQuiz); // 캐릭터가 달려간 뒤 개전
+}
+function startDefense(r){
+  quiz = {mode:'defense', region:r, qs:pickQuestions(r.tier, 1), idx:0, correct:0};
+  openQuiz();
+}
+function openQuiz(){
+  document.getElementById('quizmodal').classList.remove('hidden');
+  document.getElementById('qavatar').innerHTML = S.char ? charFace(S.faction, S.char.gender, S.char.vi, 30) : '';
+  showQuestion();
+}
+function showQuestion(){
+  const q = quiz.qs[quiz.idx];
+  const r = quiz.region;
+  document.getElementById('qtier').textContent =
+    (quiz.mode === 'conquest' ? `${r.name} 정복전 — ` : `${r.name} 방어전 — `) + TIER_NAMES[r.tier];
+  document.getElementById('qprogress').textContent =
+    quiz.mode === 'conquest' ? `${quiz.idx + 1} / ${quiz.qs.length} (정답 ${quiz.correct})` : '단판 승부';
+  document.getElementById('qtext').textContent = q.q;
+  document.getElementById('qexp').classList.add('hidden');
+  document.getElementById('qnextbtn').classList.add('hidden');
+  const revealCost = r.tier * 4;
+  const rb = document.getElementById('revealbtn');
+  rb.textContent = `정답 확인하기 (물자 -${revealCost})`;
+  rb.disabled = S.supplies < revealCost;
+  rb.classList.remove('hidden');
+  document.getElementById('qchoices').innerHTML = q.c.map((c,i) =>
+    `<button class="choice" onclick="answer(${i})">${['Ⅰ','Ⅱ','Ⅲ','Ⅳ'][i]}. ${c}</button>`).join('');
+  startSand();
+}
+function startSand(){
+  stopSand();
+  const total = 30; let left = total;
+  const bar = document.getElementById('sandbar');
+  bar.style.width = '100%';
+  sandTimer = setInterval(() => {
+    left -= 0.2;
+    bar.style.width = Math.max(0, (left / total) * 100) + '%';
+    if(left <= 0){ stopSand(); answer(-1); }
+  }, 200);
+}
+function stopSand(){ if(sandTimer){ clearInterval(sandTimer); sandTimer = null; } }
+function answer(i){
+  stopSand();
+  const q = quiz.qs[quiz.idx];
+  const isCorrect = i === q.a;
+  markChoices(q, i);
+  if(isCorrect){ quiz.correct++; sfx('good'); }
+  else sfx('bad');
+  showExp(q, isCorrect ? '정답!' : (i === -1 ? '시간의 모래가 다 떨어졌다...' : '오답!'));
+}
+function reveal(){
+  stopSand();
+  const q = quiz.qs[quiz.idx];
+  const cost = quiz.region.tier * 4;
+  if(S.supplies < cost) return;
+  S.supplies -= cost;
+  quiz.correct++;
+  markChoices(q, q.a);
+  sfx('coin');
+  showExp(q, `물자 ${cost}을 풀어 현지 학자에게 답을 샀다.`);
+  renderRes();
+}
+function markChoices(q, picked){
+  const btns = document.querySelectorAll('#qchoices .choice');
+  btns.forEach((b, idx) => {
+    b.disabled = true; b.onclick = null;
+    if(idx === q.a) b.classList.add('correct');
+    else if(idx === picked) b.classList.add('wrongpick');
+  });
+  document.getElementById('revealbtn').classList.add('hidden');
+}
+function showExp(q, headline){
+  const e = document.getElementById('qexp');
+  e.innerHTML = `<b>${headline}</b><br>${q.e}`;
+  e.classList.remove('hidden');
+  document.getElementById('qnextbtn').classList.remove('hidden');
+}
+function nextQuestion(){
+  quiz.idx++;
+  if(quiz.idx < quiz.qs.length){ showQuestion(); return; }
+  document.getElementById('quizmodal').classList.add('hidden');
+  if(quiz.mode === 'conquest'){
+    if(quiz.correct >= 3){
+      const id = quiz.region.id;
+      S.regions[id].owned = true;
+      justWonId = id;
+      S.charAt = id;
+      log(`승리! ${quiz.region.name}이(가) 포도주 제국에 합류했다! (${quiz.correct}/5)`, 'good');
+      sfx('fanfare');
+      selRegion = id;
+      celebrate(); // 승리 점프 세리머니
+      if(ownedCount() === REGIONS.length){ renderAll(); return winGame(); }
+    } else {
+      log(`패배... ${quiz.region.name} 원정대가 빈손으로 돌아왔다. (${quiz.correct}/5) 물자와 와인을 다시 모으자.`, 'evt');
+      sfx('bad');
+      travelTo(S.startId, () => { S.charAt = S.startId; save(); });
+    }
+  } else {
+    if(quiz.correct >= 1){
+      log(`${quiz.region.name} 방어 성공! 그대의 지혜가 야만족을 물리쳤다.`, 'good');
+      sfx('fanfare');
+    } else {
+      const rs = S.regions[quiz.region.id];
+      const builtKeys = Object.keys(rs.b).filter(k => rs.b[k]);
+      const looted = Math.min(S.supplies, 10);
+      S.supplies -= looted;
+      if(builtKeys.length){
+        const k = builtKeys[Math.floor(Math.random() * builtKeys.length)];
+        rs.b[k] = false;
+        log(`방어 실패! ${quiz.region.name}의 ${ {winery:'양조장',market:'시장',wall:'성벽',cellar:'셀라'}[k] }이(가) 불탔고 물자 ${looted}을 약탈당했다.`, 'evt');
+      } else {
+        log(`방어 실패! 물자 ${looted}을 약탈당했다.`, 'evt');
+      }
+      sfx('bad');
+    }
+  }
+  quiz = null;
+  save(); renderAll();
+}
+
+function winGame(){
+  S.won = true;
+  stopMusic(); playVictory();
+  document.getElementById('endtitle').textContent = 'VINUM IMPERIUM!';
+  document.getElementById('endchar').innerHTML = charSVG(S.faction, S.char.gender, S.char.vi, 70);
+  document.getElementById('endvines').textContent = 'Y Y Y Y Y Y Y Y Y Y';
+  document.getElementById('endtext').innerHTML =
+    `<b>${S.char.name}</b>, ${S.year}년 만에 10개 지역이 모두 포도밭으로 물들었다.<br>` +
+    (isGeorgia() ? '8000년 크베브리의 후예가 세계를 와인으로 정복했다.' : '로마의 길 위로 와인이 흐른다. SPQR!') +
+    `<br><br>그대는 이제 진정한 <b>Master of Wine이자 황제</b>다.`;
+  document.getElementById('endmodal').classList.remove('hidden');
+  localStorage.removeItem('vinum_save');
+}
+
+// ---------- 사운드 ----------
+let AC = null, musicOn = false, musicStep = 0, musicTimer = null;
+function ac(){ if(!AC) AC = new (window.AudioContext || window.webkitAudioContext)(); return AC; }
+function tone(freq, t, dur, type, vol){
+  const a = ac();
+  const o = a.createOscillator(), g = a.createGain();
+  o.type = type; o.frequency.value = freq;
+  g.gain.setValueAtTime(vol, t);
+  g.gain.exponentialRampToValueAtTime(0.001, t + dur);
+  o.connect(g); g.connect(a.destination);
+  o.start(t); o.stop(t + dur + 0.05);
+}
+function midi(n){ return 440 * Math.pow(2, (n - 69) / 12); }
+const MELO = [
+  76,74,76,79, 76,74,71,74,  76,74,76,79, 81,79,76,74,
+  71,74,76,79, 76,74,71,69,  71,69,71,74, 71,69,67,69,
+  76,74,76,79, 76,74,71,74,  76,74,76,79, 81,83,84,83,
+  81,79,76,79, 74,76,71,74,  76,0,76,0,   64,0,0,0,
+];
+const BASS = [40,0,47,0, 43,0,47,0, 40,0,47,0, 45,0,47,0];
+function musicTick(){
+  const a = ac(); const t = a.currentTime + 0.05;
+  const m = MELO[musicStep % MELO.length];
+  if(m) tone(midi(m), t, 0.18, 'square', 0.045);
+  const b = BASS[musicStep % BASS.length];
+  if(b) tone(midi(b), t, 0.3, 'triangle', 0.09);
+  if(musicStep % 2 === 0) tone(midi(100), t, 0.03, 'square', 0.008);
+  musicStep++;
+}
+function toggleMusic(){
+  if(musicOn){ stopMusic(); }
+  else {
+    ac().resume();
+    musicTimer = setInterval(musicTick, 214);
+    musicOn = true;
+    document.getElementById('musicbtn').textContent = '♪ 음악 끄기';
+  }
+}
+function stopMusic(){
+  if(musicTimer) clearInterval(musicTimer);
+  musicTimer = null; musicOn = false;
+  const btn = document.getElementById('musicbtn');
+  if(btn) btn.textContent = '♪ 음악 켜기';
+}
+function sfx(kind){
+  try{
+    const a = ac(); const t = a.currentTime;
+    if(kind === 'good'){ tone(880, t, .1, 'square', .06); tone(1175, t + .1, .15, 'square', .06); }
+    else if(kind === 'bad'){ tone(220, t, .15, 'sawtooth', .07); tone(185, t + .12, .25, 'sawtooth', .07); }
+    else if(kind === 'coin'){ tone(988, t, .07, 'square', .05); tone(1319, t + .07, .12, 'square', .05); }
+    else if(kind === 'build'){ tone(330, t, .08, 'square', .05); tone(392, t + .09, .08, 'square', .05); tone(494, t + .18, .12, 'square', .05); }
+    else if(kind === 'pour'){ tone(523, t, .06, 'sine', .06); tone(659, t + .06, .06, 'sine', .06); tone(784, t + .12, .1, 'sine', .06); }
+    else if(kind === 'plant'){ tone(392, t, .1, 'sine', .05); tone(523, t + .1, .12, 'sine', .05); }
+    else if(kind === 'fanfare'){ [659,784,988,1319].forEach((f,i) => tone(f, t + i * .09, .14, 'square', .06)); }
+    else if(kind === 'step'){ tone(170 + Math.random() * 50, t, .03, 'triangle', .015); }
+    else if(kind === 'jump'){ tone(330, t, .06, 'square', .05); tone(587, t + .05, .1, 'square', .05); }
+    else if(kind === 'land'){ tone(150, t, .07, 'triangle', .05); }
+  }catch(e){}
+}
+function playVictory(){
+  try{
+    const a = ac(); const t = a.currentTime;
+    [64,67,71,76,79,83,88].forEach((n,i) => tone(midi(n), t + i * .13, .3, 'square', .07));
+  }catch(e){}
+}
+
+// ---------- 저장 ----------
+function save(){
+  if(S && !S.won) localStorage.setItem('vinum_save', JSON.stringify(S));
+}
+function load(){
+  try{
+    const raw = localStorage.getItem('vinum_save');
+    if(raw) return JSON.parse(raw);
+  }catch(e){}
+  return null;
+}
+
+// ---------- 시작 플로우 ----------
+function pickFaction(faction){
+  pendingFaction = faction;
+  pendingChar = null;
+  document.getElementById('startmodal').classList.add('hidden');
+  renderCharModal();
+  document.getElementById('charmodal').classList.remove('hidden');
+}
+function backToFaction(){
+  document.getElementById('charmodal').classList.add('hidden');
+  document.getElementById('startmodal').classList.remove('hidden');
+}
+function renderCharModal(){
+  const f = pendingFaction;
+  document.getElementById('chartitle').textContent =
+    `${FACTION_NAMES[f]}의 개척자를 만들자`;
+  document.getElementById('glf').textContent = `${FACTION_NAMES[f]} 여성 — ${f === 'rome' ? '스톨라와 팔라' : '카르툴리 드레스와 레차키'}`;
+  document.getElementById('glm').textContent = `${FACTION_NAMES[f]} 남성 — ${f === 'rome' ? '토가와 월계관' : '초하와 파파키'}`;
+  const mk = (gender) => CHAR_SETS[f][gender].map((v,i) =>
+    `<div class="charcell" id="cc-${gender}-${i}" onclick="pickChar('${gender}',${i})">
+      ${charSVG(f, gender, i, 52)}<div class="cname">${v.name}</div></div>`).join('');
+  document.getElementById('gridf').innerHTML = mk('f');
+  document.getElementById('gridm').innerHTML = mk('m');
+  updateCharOk();
+}
+function pickChar(gender, vi){
+  pendingChar = {gender, vi};
+  document.querySelectorAll('.charcell').forEach(c => c.classList.remove('sel'));
+  document.getElementById(`cc-${gender}-${vi}`).classList.add('sel');
+  const nameEl = document.getElementById('namein');
+  if(!nameEl.value.trim()) nameEl.value = CHAR_SETS[pendingFaction][gender][vi].name;
+  updateCharOk();
+  sfx('good');
+}
+function updateCharOk(){
+  document.getElementById('charokbtn').disabled = !(pendingChar && document.getElementById('namein').value.trim());
+}
+function confirmChar(){
+  const name = document.getElementById('namein').value.trim().slice(0, 12);
+  if(!pendingChar || !name) return;
+  const chr = {gender:pendingChar.gender, vi:pendingChar.vi, name};
+  S = newState(pendingFaction, chr);
+  charPos = null; travel = null; // 시작 지역에서 스폰
+  document.getElementById('charmodal').classList.add('hidden');
+  selRegion = S.startId;
+  log(pendingFaction === 'georgia'
+    ? `콜키스의 크베브리에서 8000년 만의 대장정이 시작된다. ${name}, 포도씨를 들고 세계로!`
+    : `원로원과 로마 시민의 이름으로! ${name}, 포도밭이 곧 제국이다. In vino imperium!`);
+  log('포도밭을 개간하고, 수확·양조·판매로 힘을 기른 뒤 원정을 떠나자. 「다음 계절」로 시간이 흐른다.');
+  renderAll(); save();
+  sfx('fanfare');
+}
+
+document.getElementById('nextseason').addEventListener('click', () => { nextSeason(); save(); });
+document.getElementById('musicbtn').addEventListener('click', toggleMusic);
+document.getElementById('revealbtn').addEventListener('click', reveal);
+document.getElementById('qnextbtn').addEventListener('click', nextQuestion);
+document.getElementById('namein').addEventListener('input', updateCharOk);
+
+// 이어하기 (구버전 세이브는 캐릭터 생성만 추가로)
+(function init(){
+  const saved = load();
+  if(saved && !saved.won){
+    S = saved;
+    if(!S.charAt) S.charAt = S.startId;
+    selRegion = S.startId;
+    document.getElementById('startmodal').classList.add('hidden');
+    if(!S.char){
+      pendingFaction = S.faction;
+      renderCharModal();
+      document.getElementById('charmodal').classList.remove('hidden');
+      // 기존 게임에 캐릭터만 부여
+      const origConfirm = confirmChar;
+      window.confirmChar = function(){
+        const name = document.getElementById('namein').value.trim().slice(0, 12);
+        if(!pendingChar || !name) return;
+        S.char = {gender:pendingChar.gender, vi:pendingChar.vi, name};
+        document.getElementById('charmodal').classList.add('hidden');
+        log(`${name}이(가) 제국의 지휘를 이어받았다!`);
+        renderAll(); save(); sfx('fanfare');
+        window.confirmChar = origConfirm;
+      };
+    }
+    log('저장된 제국을 이어받았다. 정복을 계속하자!');
+    renderAll();
+  }
+  requestAnimationFrame(gameLoop); // 무브먼트 루프 시동
+})();
+</script>
+</body>
+</html>
