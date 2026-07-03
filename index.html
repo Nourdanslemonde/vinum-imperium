@@ -509,6 +509,7 @@ function newState(faction, chr){
     gold:100, seeds:3, grapes:0, wine:2, supplies:30,
     year:1, seasonIdx:0,
     regions, merchantDeal:null, caravan:null,
+    debts:0, collection:null, // 떼인 대금 장부 · 추심 진행 건
     log:[], won:false,
   };
 }
@@ -850,6 +851,8 @@ function renderRes(){
     ['골드', S.gold], ['포도씨', S.seeds], ['포도', S.grapes],
     ['와인', S.wine], ['물자', S.supplies], ['정복', ownedCount() + ' / ' + REGIONS.length],
   ];
+  if(S.debts > 0) items.push(['떼인 대금', S.debts + 'G']);
+  if(S.collection) items.push(['추심 중', S.collection.amount + 'G']);
   document.getElementById('resbar').innerHTML =
     items.map(([k,v]) => `<div class="res">${k} <span class="v">${v}</span></div>`).join('');
 }
@@ -936,6 +939,12 @@ function renderDetail(){
       } else {
         html += `<div class="row"><span>카라반이 먼 시장으로 떠나 있다... (와인 ${S.caravan.wine}병)</span></div>`;
       }
+      if(S.debts > 0 && !S.collection){
+        html += `<div class="row"><span>고려 채권 추심단: 떼인 대금 ${S.debts}G의 80% 회수 (수수료 20%)</span>
+          <button class="small wine" onclick="hireCollector()">의뢰</button></div>`;
+      } else if(S.collection){
+        html += `<div class="row"><span>추심단이 채무자를 쫓고 있다... (${S.collection.amount}G, 다음 계절 귀환)</span></div>`;
+      }
       html += `</div>`;
     }
   } else {
@@ -983,6 +992,9 @@ function adviseNext(){
     if((S.merchantDeal && S.merchantDeal.type === 'sellx2') || S.regions[best.id].price >= basePrice(best) * 1.1)
       return {msg:`${best.name} 와인 시세가 좋다(${sellPrice(best)}G) — 지금 팔자!`, target:best.id};
   }
+  // 4.5 떼인 대금 추심
+  if(S.debts >= 15 && !S.collection && mkts.length)
+    return {msg:`떼인 대금이 ${S.debts}G나 된다 — ${mkts[0].name} 시장에서 추심단에 의뢰하자 (80% 회수).`, target:mkts[0].id};
   // 5. 다음 원정까지 모자란 것
   if(targets.length){
     const t = targets[0], need = [];
@@ -1099,6 +1111,16 @@ function buySeed(){
   S.gold -= c; S.seeds += 1;
   log('포도씨 1을 사들였다.'); renderAll();
 }
+function hireCollector(){
+  if(S.debts <= 0 || S.collection) return;
+  S.collection = {amount:S.debts};
+  S.debts = 0;
+  log(pick([
+    `고려 채권 추심단이 장부를 들고 떠났다. "떼인 돈은 반드시 받아냅니다." 다음 계절에 귀환한다.`,
+    `추심단 두목이 장부를 훑고 씩 웃었다. "수수료 20%. 대신 확실합니다." 추격 개시.`,
+  ]));
+  sfx('build'); renderAll();
+}
 function sendCaravan(id){
   if(S.wine < 5 || S.caravan) return;
   const p = sellPrice(REGIONS.find(x => x.id === id));
@@ -1126,9 +1148,20 @@ function nextSeason(){
     const base = basePrice(r);
     S.regions[r.id].price = Math.max(5, Math.round(base * (0.75 + Math.random() * 0.6)));
   }
+  // 추심단 귀환
+  if(S.collection){
+    const recovered = Math.round(S.collection.amount * 0.8);
+    const fee = S.collection.amount - recovered;
+    S.gold += recovered;
+    log(`고려 채권 추심단이 도망친 상인을 붙잡아 왔다! 대금 ${recovered}G 회수 (수수료 ${fee}G 공제).`, 'good');
+    sfx('fanfare');
+    S.collection = null;
+  }
   if(S.caravan){
     if(Math.random() < 0.2){
-      log(`카라반이 돌아왔다... 빈손으로. 거래 상대가 대금 ${S.caravan.price * S.caravan.wine}G를 떼먹고 사라졌다!`, 'evt');
+      const owed = S.caravan.price * S.caravan.wine;
+      S.debts += owed;
+      log(`카라반이 돌아왔다... 빈손으로. 거래 상대가 대금 ${owed}G를 떼먹고 사라졌다! (채권 장부에 기록)`, 'evt');
       sfx('bad');
     } else {
       const got = S.caravan.price * S.caravan.wine;
@@ -1182,7 +1215,8 @@ function rollEvent(){
     if(S.gold >= 50){
       const lost = Math.round(S.gold * 0.15);
       S.gold -= lost;
-      log(`외상으로 와인을 가져간 상인이 잠적했다. 대금 ${lost}G를 떼였다!`, 'evt');
+      S.debts += lost;
+      log(`외상으로 와인을 가져간 상인이 잠적했다. 대금 ${lost}G를 떼였다! (채권 장부에 기록)`, 'evt');
       sfx('bad');
     } else {
       log('수상한 상인이 외상을 요구했지만 현명하게 거절했다.');
@@ -1569,6 +1603,8 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
   if(saved && !saved.won){
     S = saved;
     if(!S.charAt) S.charAt = S.startId;
+    S.debts = S.debts || 0;
+    S.collection = S.collection || null;
     selRegion = S.startId;
     document.getElementById('startmodal').classList.add('hidden');
     if(!S.char){
