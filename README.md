@@ -61,8 +61,24 @@
 - 서버(`hall-backend.gs`): 필드 화이트리스트, HTML/제어문자 제거, 값 범위 강제, 간단한 레이트리밋
 - **주의**: 서버 검증을 실제로 적용하려면 `hall-backend.gs`를 Apps Script에 붙여넣고 **새 버전으로 재배포**해야 함 (파일 안 배포 안내 참고)
 
+## 테스트 (Playwright)
+
+브라우저 자동화로 언어 선택/전환·튜토리얼 흐름을 실제로 검증한다. 게임이 단일 HTML이라 `file://`로 직접 로드하며 별도 서버가 필요 없다.
+
+```bash
+npm install            # 최초 1회 (@playwright/test)
+npx playwright install chromium   # 최초 1회 (브라우저 바이너리)
+npm test               # 헤드리스 실행 (tests/*.spec.js)
+npm run test:headed    # 브라우저 띄워서 실행
+npm run validate       # 퀴즈 데이터 정합성 검증
+```
+
+- `tests/vinum.spec.js` — 시작 언어 선택, 중간 전환(고정 버튼), 규칙 화면 재바인딩
+- `tests/tutorial.spec.js` — 첫 정복 튜토리얼(타이머 없음·오답 재도전·완료 시 정복·정식 전환)
+
 ## 파일
 
 - `index.html` — 게임 전체 (단일 파일, 의존성 없음)
 - `hall-backend.gs` — 명예의 전당 서버 코드 (Apps Script 배포용)
 - `tools/validate-quiz.mjs` — 퀴즈 데이터 검증 스크립트
+- `tests/` · `playwright.config.js` — Playwright E2E 테스트

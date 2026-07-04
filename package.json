@@ -1,0 +1,26 @@
+{
+  "name": "vinum-imperium",
+  "version": "1.0.0",
+  "description": "와인 지식 퀴즈 × 경영 시뮬레이션 브라우저 게임. `index.html` 더블클릭으로 실행 (설치·서버 불필요).",
+  "main": "index.html",
+  "scripts": {
+    "test": "playwright test",
+    "test:headed": "playwright test --headed",
+    "validate": "node tools/validate-quiz.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Nourdanslemonde/vinum-imperium.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/Nourdanslemonde/vinum-imperium/issues"
+  },
+  "homepage": "https://github.com/Nourdanslemonde/vinum-imperium#readme",
+  "devDependencies": {
+    "@playwright/test": "^1.61.1"
+  }
+}
