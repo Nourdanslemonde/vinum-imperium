@@ -37,6 +37,8 @@ button:hover{transform:translateY(-1px);}
 button:active{transform:translateY(1px); box-shadow:0 1px 0 rgba(0,0,0,.25);}
 button:disabled{opacity:.45; cursor:not-allowed; transform:none;}
 button.small{padding:4px 9px; font-size:12px; border-radius:8px;}
+.langfloat{position:fixed; top:10px; right:10px; z-index:1000; background:#fbf3df; border:1px solid #b8862d; color:#5c3a12; padding:5px 12px; border-radius:20px; font-weight:800; font-size:12px; box-shadow:0 2px 7px rgba(0,0,0,.28); cursor:pointer;}
+.langfloat:hover{background:#fff;}
 button.wine{background:var(--wine2); color:#fff;}
 button.leaf{background:var(--leaf); color:#fff;}
 #resbar{display:flex; gap:8px; flex-wrap:wrap; margin:10px 0;}
@@ -177,6 +179,7 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
 </style>
 </head>
 <body>
+<button id="langbtn" class="langfloat" onclick="toggleLang()">EN</button>
 <div id="app">
   <header>
     <h1>VINUM IMPERIUM<small id="subtitle">포도주 정복기</small></h1>
@@ -185,7 +188,6 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
       <span id="seasonlabel">1년차 봄</span>
       <button id="nextseason" class="leaf">다음 계절 ▸</button>
       <button id="helpbtn" class="small" onclick="openHowTo(false)">게임 방법</button>
-      <button id="langbtn" class="small" onclick="toggleLang()">EN</button>
       <button id="musicbtn" class="small">♪ 음악 켜기</button>
     </div>
   </header>
@@ -2194,17 +2196,23 @@ function introSkip(){
   document.getElementById('startmodal').classList.remove('hidden');
 }
 // 게임 방법: fromFlow면 시작 플로우(→ 진영 선택), 아니면 게임 중 단순 열람(닫기)
-function openHowTo(fromFlow){
-  document.getElementById('intromodal').classList.add('hidden');
-  applyStaticLang();
+let howToFromFlow = false;
+function bindHowToBtn(){
   const btn = document.getElementById('howtobtn');
-  if(fromFlow){
+  if(!btn) return;
+  if(howToFromFlow){
     btn.textContent = T('진영 고르러 가기 ▸','Choose a faction ▸');
     btn.onclick = () => { document.getElementById('howtomodal').classList.add('hidden'); document.getElementById('startmodal').classList.remove('hidden'); };
   } else {
     btn.textContent = T('닫기','Close');
     btn.onclick = () => document.getElementById('howtomodal').classList.add('hidden');
   }
+}
+function openHowTo(fromFlow){
+  howToFromFlow = !!fromFlow;
+  document.getElementById('intromodal').classList.add('hidden');
+  applyStaticLang();
+  bindHowToBtn();
   document.getElementById('howtomodal').classList.remove('hidden');
 }
 
@@ -2242,9 +2250,12 @@ function applyStaticLang(){
   if(sm) sm.innerHTML = T(startModalHTML_ko(), startModalHTML_en());
   renderDiffRow();
   const sh = document.getElementById('starthall'); if(sh) renderHall(sh);
-  // 게임 방법 모달 (버튼은 openHowTo가 다시 설정)
+  // 게임 방법 모달 — 다시 그린 뒤, 열려 있으면 버튼 핸들러 재바인딩
   const hm = document.querySelector('#howtomodal .modal');
-  if(hm) hm.innerHTML = T(howToHTML_ko(), howToHTML_en());
+  if(hm){
+    hm.innerHTML = T(howToHTML_ko(), howToHTML_en());
+    if(!document.getElementById('howtomodal').classList.contains('hidden')) bindHowToBtn();
+  }
   // 열려 있는 모달은 다시 렌더
   if(!document.getElementById('intromodal').classList.contains('hidden')){
     document.getElementById('introslides').innerHTML = INTRO.map((s,i) =>
