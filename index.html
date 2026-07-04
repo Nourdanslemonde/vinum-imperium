@@ -14,7 +14,9 @@
 body{
   font-family:'Segoe UI','Malgun Gothic',sans-serif; background:linear-gradient(#d8c9a3,#c9b68c);
   color:var(--ink); min-height:100vh;
+  word-break:keep-all; overflow-wrap:break-word; /* 한글을 어절(띄어쓰기) 단위로 줄바꿈 */
 }
+p, .dsec, #log, .choice, .introslide p, .modal p{text-wrap:pretty;} /* 마지막 줄 홀로 남는 것 완화 */
 #app{max-width:1160px; margin:0 auto; padding:12px;}
 header{
   display:flex; align-items:center; justify-content:space-between; flex-wrap:wrap; gap:8px;
@@ -1864,35 +1866,64 @@ function kick(t){
   o.start(t); o.stop(t + 0.15);
 }
 function midi(n){ return 440 * Math.pow(2, (n - 69) / 12); }
-// 타이틀 테마: E단조 8마디, 리드+옥타브+베이스 오음파+드럼
-const LEAD = [
-  76,0,71,0,  76,0,79,78,  76,74,71,0,  74,0,71,69,
-  67,69,71,72, 74,72,71,69, 71,0,64,0,  71,69,67,69,
-  76,0,71,0,  76,0,79,78,  81,79,78,76, 78,0,74,0,
-  79,78,76,74, 72,74,76,71, 69,67,64,67, 64,0,0,0,
-];
-const ROOTS = [40,47,48,47, 40,47,45,40]; // 마디별 근음: E B C B / E B A E
+// 스테이지 테마: 정복한 최고 티어(1~5)가 오를수록 잔잔한 E단조 → 웅장한 E장조 개선곡으로 진화.
+// 각 테마: {lead(8분음표, 0=쉼), roots(마디별 근음), step(빠르기), type, oct(옥타브 지지), fifth(5도 화음), drums}
+const THEMES = {
+ 1:{ // 초라한 시작 — 잔잔·희소 (E단조)
+   lead:[76,0,0,0, 74,0,72,0, 71,0,0,0, 74,0,0,0, 72,0,0,0, 71,0,69,0, 67,0,0,0, 71,0,0,0],
+   roots:[40,40,45,47], step:0.225, type:'triangle', oct:false, fifth:false, drums:'soft', leadVol:0.10 },
+ 2:{ // 뿌리내리다 — 움직임 추가 (E단조)
+   lead:[76,0,74,76, 79,0,78,76, 74,0,72,74, 71,0,0,0, 72,74,76,0, 79,0,81,79, 78,76,74,0, 71,0,69,0],
+   roots:[40,47,45,47], step:0.205, type:'square', oct:false, fifth:false, drums:'full', leadVol:0.10 },
+ 3:{ // 제국의 기틀 — 원래 타이틀 테마 (E단조, 리드+옥타브)
+   lead:[76,0,71,0, 76,0,79,78, 76,74,71,0, 74,0,71,69, 67,69,71,72, 74,72,71,69, 71,0,64,0, 71,69,67,69,
+         76,0,71,0, 76,0,79,78, 81,79,78,76, 78,0,74,0, 79,78,76,74, 72,74,76,71, 69,67,64,67, 64,0,0,0],
+   roots:[40,47,48,47, 40,47,45,40], step:0.19, type:'square', oct:true, fifth:false, drums:'full', leadVol:0.11 },
+ 4:{ // 대제국 — 고음·5도 화음·빨라짐 (E단조 상행)
+   lead:[79,0,83,0, 81,79,78,79, 76,0,79,0, 74,0,0,0, 76,79,83,0, 84,83,81,79, 78,79,81,0, 76,0,71,0],
+   roots:[40,43,45,47], step:0.17, type:'square', oct:true, fifth:true, drums:'full', leadVol:0.11 },
+ 5:{ // 세계 제패 임박 — 개선곡(E장조·더블킥·풀 화음)
+   lead:[76,80,83,88, 87,0,85,83, 80,83,85,0, 88,0,83,0, 85,87,88,0, 87,85,83,80, 83,85,87,88, 83,0,76,0],
+   roots:[40,45,47,40], step:0.155, type:'square', oct:true, fifth:true, drums:'double', leadVol:0.12 },
+};
+let musicStage = 1;
+function desiredStage(){ return (S && !S.won && S.regions) ? Math.max(1, Math.min(5, maxOwnedTier())) : 1; }
 function playMusicStep(s, t){
-  const m = LEAD[s];
+  const th = THEMES[musicStage] || THEMES[1];
+  const m = th.lead[s];
   if(m){
-    tone(midi(m), t, 0.22, 'square', 0.11);       // 리드
-    tone(midi(m - 12), t, 0.2, 'square', 0.035);  // 옥타브 아래 서포트
+    tone(midi(m), t, th.step * 1.1, th.type, th.leadVol);            // 리드
+    if(th.oct) tone(midi(m - 12), t, th.step, th.type, 0.035);       // 옥타브 아래
+    if(th.fifth) tone(midi(m + 7), t, th.step * 0.9, 'triangle', 0.03); // 5도 화음
   }
-  const bar = Math.floor(s / 8) % ROOTS.length, e = s % 8;
-  if(e % 2 === 0){ // 오음-파 베이스 (근음/5도 교대)
-    const r = ROOTS[bar];
-    tone(midi(e % 4 === 0 ? r : r + 7), t, 0.24, 'triangle', 0.22);
+  const bar = Math.floor(s / 8) % th.roots.length, e = s % 8;
+  if(e % 2 === 0){ const r = th.roots[bar]; tone(midi(e % 4 === 0 ? r : r + 7), t, 0.24, 'triangle', 0.22); }
+  if(th.drums === 'soft'){
+    if(e % 8 === 0) kick(t);
+    if(e % 2 === 1) noise(t, 0.03, 0.03, 6000);
+  } else if(th.drums === 'double'){
+    if(e % 4 === 0 || e % 4 === 3) kick(t);
+    if(e % 4 === 2) noise(t, 0.09, 0.12, 1500);
+    if(e % 2 === 1) noise(t, 0.035, 0.06, 6000);
+  } else { // full
+    if(e % 4 === 0) kick(t);
+    if(e % 4 === 2) noise(t, 0.09, 0.1, 1500);
+    if(e % 2 === 1) noise(t, 0.035, 0.05, 6000);
   }
-  if(e % 4 === 0) kick(t);
-  if(e % 4 === 2) noise(t, 0.09, 0.1, 1500);   // 스네어
-  if(e % 2 === 1) noise(t, 0.035, 0.05, 6000); // 햇
 }
 function schedule(){
   const a = ac();
   while(nextT < a.currentTime + 0.12){
+    if(stepIdx === 0){ // 루프 경계에서 스테이지 전환 (자연스럽게)
+      const ds = desiredStage();
+      if(ds !== musicStage){
+        if(ds > musicStage && musicOn) log('제국이 커지며 배경 선율이 한층 웅장해진다.', 'good');
+        musicStage = ds;
+      }
+    }
     playMusicStep(stepIdx, nextT);
-    stepIdx = (stepIdx + 1) % LEAD.length;
-    nextT += STEP;
+    stepIdx = (stepIdx + 1) % THEMES[musicStage].lead.length;
+    nextT += THEMES[musicStage].step;
   }
 }
 function startMusic(){
@@ -2116,6 +2147,8 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
 (function init(){
   renderDiffRow();
   renderHall(document.getElementById('starthall'));
+  // ?intro 또는 ?new 로 열면 저장을 지우고 인트로부터 다시 시작
+  if(/[?&](intro|new)\b/.test(location.search)){ localStorage.removeItem('vinum_save'); }
   const saved = load();
   if(saved && !saved.won){
     S = saved;
