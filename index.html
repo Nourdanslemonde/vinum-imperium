@@ -202,6 +202,18 @@ main{display:grid; grid-template-columns:1fr 330px; gap:12px;}
 </div>
 
 <!-- 인트로: 스토리텔링 애니메이션 -->
+<!-- 언어 선택 (새 게임 최초 1회) -->
+<div class="modalbg hidden" id="langmodal">
+  <div class="modal" style="text-align:center; max-width:360px;">
+    <h2 style="letter-spacing:2px;">VINUM IMPERIUM</h2>
+    <p style="opacity:.75; margin:6px 0 18px;">언어를 선택하세요<br>Choose your language</p>
+    <div class="centerbtns" style="flex-direction:column; gap:10px; align-items:stretch;">
+      <button class="wine" onclick="chooseLang('ko')">한국어</button>
+      <button class="wine" onclick="chooseLang('en')">English</button>
+    </div>
+  </div>
+</div>
+
 <div class="modalbg hidden" id="intromodal">
   <div class="introstage" id="introstage">
     <div id="introslides"></div>
@@ -2149,6 +2161,16 @@ const INTRO = [
    <path d="M158,112 Q170,82 146,58" stroke="#5d7a4e" stroke-width="4" fill="none"/></svg>`},
 ];
 let introIdx = 0;
+function openLangSelect(){
+  applyStaticLang();
+  const lb = document.getElementById('langbtn'); if(lb) lb.textContent = LANG === 'en' ? '한글' : 'EN';
+  document.getElementById('langmodal').classList.remove('hidden');
+}
+function chooseLang(l){
+  setLang(l); // LANG 설정·저장·정적 UI 반영
+  document.getElementById('langmodal').classList.add('hidden');
+  startIntro();
+}
 function startIntro(){
   introIdx = 0;
   document.getElementById('startmodal').classList.add('hidden');
@@ -2383,7 +2405,7 @@ document.getElementById('namein').addEventListener('input', updateCharOk);
     log('저장된 제국을 이어받았다. 정복을 계속하자!');
     renderAll();
   } else {
-    startIntro(); // 새 게임: 스토리 인트로 → 게임 방법 → 진영 선택
+    openLangSelect(); // 새 게임: 언어 선택 → 스토리 인트로 → 게임 방법 → 진영 선택
   }
   requestAnimationFrame(gameLoop); // 무브먼트 루프 시동
 })();
