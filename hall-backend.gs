@@ -61,8 +61,33 @@ function sanitize_(raw) {
   var gender = GENDERS[raw.gender] ? raw.gender : 'f';
   var vi = clampInt_(raw.vi, 0, 4, 0);
   var years = clampInt_(raw.years, 1, 999, 1);
-  var date = cleanStr_(raw.date, 10) || Utilities.formatDate(new Date(), 'GMT', 'yyyy-MM-dd');
+  var date = fmtDate_(raw.date);
   return { date: date, name: name, faction: faction, gender: gender, vi: vi, years: years, comment: comment };
+}
+
+/** 날짜 → yyyy-MM-dd. 시트는 날짜 칸을 Date 객체로 돌려주므로 문자열 자르기만으론 깨진다 */
+function fmtDate_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v)) {
+    return Utilities.formatDate(v, 'Asia/Seoul', 'yyyy-MM-dd');
+  }
+  var s = cleanStr_(v, 10);
+  return /^\d{4}-\d{2}-\d{2}$/.test(s) ? s : Utilities.formatDate(new Date(), 'Asia/Seoul', 'yyyy-MM-dd');
+}
+
+/** 시트 수식 주입 방지: = + - @ 로 시작하면 앞에 ' 를 붙여 글자로만 저장 */
+function cellSafe_(s) {
+  return /^[=+\-@]/.test(s) ? "'" + s : s;
+}
+
+/** 전체 등록 상한: 1시간에 GLOBAL_MAX_PER_HOUR건 — 문구만 바꿔 도배하는 것 방지 */
+var GLOBAL_MAX_PER_HOUR = 30;
+function globalLimited_() {
+  var cache = CacheService.getScriptCache();
+  var key = 'rl_global_' + Utilities.formatDate(new Date(), 'GMT', 'yyyyMMddHH');
+  var n = parseInt(cache.get(key) || '0', 10);
+  if (n >= GLOBAL_MAX_PER_HOUR) return true;
+  cache.put(key, String(n + 1), 3600);
+  return false;
 }
 
 /** 간단한 레이트리밋: 캐시에 최근 요청 지문을 남겨 도배를 완화 */
@@ -84,14 +109,16 @@ function json_(obj) {
 function doPost(e) {
   try {
     var raw = JSON.parse((e && e.postData && e.postData.contents) || '{}');
+    raw.date = null; // 날짜는 클라이언트 값을 믿지 않고 서버 시각으로 기록
     var rec = sanitize_(raw);
 
     // 도배 방지: 같은 이름+코멘트 조합이 짧은 시간 내 반복되면 무시
     if (rateLimited_(Utilities.base64Encode(rec.name + '|' + rec.comment).substring(0, 40))) {
       return json_({ ok: false, error: 'rate_limited' });
     }
+    if (globalLimited_()) return json_({ ok: false, error: 'rate_limited' });
 
-    sheet_().appendRow([rec.date, rec.name, rec.faction, rec.gender, rec.vi, rec.years, rec.comment]);
+    sheet_().appendRow([rec.date, cellSafe_(rec.name), rec.faction, rec.gender, rec.vi, rec.years, cellSafe_(rec.comment)]);
     return json_({ ok: true });
   } catch (err) {
     return json_({ ok: false, error: String(err) });
